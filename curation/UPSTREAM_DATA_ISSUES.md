@@ -69,8 +69,24 @@ same physical model split across two id namespaces
 - **`meta-llama/Llama-3.1-405B-Instruct`** — absent; only the Together-hosted
   `Meta-Llama-3.1-405B-Instruct-Turbo` drafts are present.
 
+**Locally handled now:** three of the four are added as curated `hf` canonicals
+in `seed/models/core.yaml` with the leaderboard labels as aliases
+(`deepseek-ai/DeepSeek-V3.2-Exp`, `meta-llama/Llama-3.1-405B-Instruct`,
+`utter-project/EuroLLM-9B-Instruct`). The superseded models.dev draft
+`deepseek/deepseek-v3-2-exp` is listed in `core.yaml` `skip_source_ids`, since
+keeping both would make `deepseek-v3-2-exp` resolve ambiguously — the same
+failure mode as the `gemma2-9b-it` alias below.
+
+`Qwen3-Next` is deliberately **not** added: the leaderboard label does not say
+which released variant was evaluated (`Qwen/Qwen3-Next-80B-A3B-Instruct` vs
+`-Thinking`), so the variant-agnostic `alibaba/qwen3-next` stays until the
+benchmark authors confirm. Adding a canonical would be a guess about which
+weights produced the score.
+
 - **Action: check why the HF generator missed these repos** (all four exist on
-  the Hub), then remove the adapter-side `hf_canonical` fallbacks.
+  the Hub). The curated entries above are a floor, not a fix — once the
+  generator picks them up, the `core.yaml` entries can be thinned back to
+  whatever the generator does not reproduce.
 
 ### Ambiguous instruct alias
 

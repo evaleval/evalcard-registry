@@ -13,6 +13,11 @@ skip_source_ids:
 # Dashed/respelled twins of adopted OpenRouter family roots + bare enrichment
 # materializations of folded families — each one's surface forms are bridged
 # onto the surviving canonical in enrichments/aliases.yaml.
+# models.dev draft for a checkpoint that IS on the Hub; superseded by the
+# curated hf canonical deepseek-ai/DeepSeek-V3.2-Exp below, which carries its
+# surface forms as aliases (leaving both would make `deepseek-v3-2-exp`
+# resolve ambiguously).
+- deepseek/deepseek-v3-2-exp
 - alibaba/qwen-3-6-plus
 - alibaba/qwen-3-7-max
 - alibaba/qwen-3-7-plus
@@ -13615,3 +13620,70 @@ entries:
   - wanx/wan-v2-6
   - wan-v2-6
   metadata: '{}'
+# LEXam leaderboard checkpoints that exist on the Hub but no generator carried,
+# so the leaderboard label had no HF-anchored canonical to resolve to (see
+# curation/UPSTREAM_DATA_ISSUES.md). Facts from the HF model API.
+- id: deepseek-ai/DeepSeek-V3.2-Exp
+  resolution_source: hf
+  display_name: DeepSeek-V3.2-Exp
+  org_id: deepseek
+  family: deepseek-v3.2
+  architecture: null
+  params_billions: 685.4
+  parents:
+  - id: deepseek-ai/DeepSeek-V3.2-Exp-Base
+    relationship: finetune
+  open_weights: true
+  release_date: '2025-09-29'
+  input_modalities: null
+  output_modalities: null
+  tags:
+  - open-weight
+  metadata: '{}'
+  review_status: reviewed
+  aliases:
+  - DeepSeek-V3.2-Exp
+  - deepseek-v3-2-exp
+  - DeepSeek V3.2 Exp
+- id: meta-llama/Llama-3.1-405B-Instruct
+  resolution_source: hf
+  display_name: Llama 3.1 405B Instruct
+  org_id: meta
+  family: llama-3.1-405b
+  architecture: null
+  params_billions: 405.9
+  parents:
+  - id: meta-llama/Llama-3.1-405B
+    relationship: finetune
+  open_weights: true
+  release_date: '2024-07-16'
+  input_modalities: null
+  output_modalities: null
+  tags:
+  - open-weight
+  metadata: '{}'
+  review_status: reviewed
+  aliases:
+  - Llama-3.1-405B-it
+  - Meta-Llama-3.1-405B-Instruct
+- id: utter-project/EuroLLM-9B-Instruct
+  resolution_source: hf
+  display_name: EuroLLM 9B Instruct
+  org_id: utter-project
+  family: eurollm-9b
+  architecture: null
+  params_billions: 9.2
+  parents:
+  - id: utter-project/EuroLLM-9B
+    relationship: finetune
+  open_weights: true
+  release_date: '2024-11-22'
+  input_modalities: null
+  output_modalities: null
+  tags:
+  - open-weight
+  metadata: '{}'
+  review_status: reviewed
+  aliases:
+  - EuroLLM-9B-it
+  - EuroLLM-9B-Instruct
