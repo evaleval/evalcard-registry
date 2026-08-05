@@ -43,3 +43,53 @@ remove the corresponding local override and this entry.
     are kept as aliases, not dropped — dropping would lose resolution of a real
     upstream string. No local data is wrong; the noise is purely upstream.
   - **Action: flag to models.dev to correct the vendor prefixes.**
+
+## Coverage gaps found while resolving the LEXam leaderboard
+
+Resolving the 36 models on the [LEXam](https://lexam-benchmark.github.io/)
+leaderboard for the Every Eval Ever `lexam` adapter surfaced four checkpoints
+that have **no HF-anchored canonical**, so the leaderboard label resolves only
+to an API-catalog draft (`resolution_source: models_dev` / `inferred`) or to a
+different model. The adapter falls back to the canonical HF repo id and records
+`model_id_resolution: hf_canonical`, which is the honest answer but keeps the
+same physical model split across two id namespaces
+(`deepseek-ai/...` vs `deepseek/...`).
+
+- **`deepseek-ai/DeepSeek-V3.2-Exp`** — the HF repo exists (created
+  2025-09-29) and its siblings `deepseek-ai/DeepSeek-V3.2` and
+  `deepseek-ai/DeepSeek-V3.2-Speciale` are present and `reviewed`, but the
+  `-Exp` checkpoint is absent. `DeepSeek-V3.2-Exp` therefore resolves to the
+  models_dev draft `deepseek/deepseek-v3-2-exp`.
+- **`Qwen/Qwen3-Next-80B-A3B-Instruct` / `-Thinking`** — absent; `Qwen3-Next`
+  resolves to the models_dev draft `alibaba/qwen3-next`, which does not
+  distinguish the two released variants.
+- **`utter-project/EuroLLM-9B-Instruct`** — absent; only the base
+  `utter-project/EuroLLM-9B` is present, so an instruct-model label can only
+  resolve to the base model.
+- **`meta-llama/Llama-3.1-405B-Instruct`** — absent; only the Together-hosted
+  `Meta-Llama-3.1-405B-Instruct-Turbo` drafts are present.
+
+- **Action: check why the HF generator missed these repos** (all four exist on
+  the Hub), then remove the adapter-side `hf_canonical` fallbacks.
+
+### Ambiguous instruct alias
+
+- **`gemma2-9b-it` → `google/gemma-2-9b`** (seed alias) points an `-it` form at
+  the **base** model, while the correctly-formed `gemma-2-9b-it` →
+  `google/gemma-2-9b-it` exists alongside it. Any resolver that normalizes
+  punctuation sees both and can land on the base model for an instruct-tuned
+  evaluation.
+  - **Action: re-point `gemma2-9b-it` at `google/gemma-2-9b-it`.**
+
+### Mode-as-model drafts
+
+`deepseek/deepseek-v3-2-reasoning`, `deepseek/deepseek-v3.2-thinking`,
+`deepseek/deepseek-v3-2-exp-prompt-thinking` and
+`fireworks/deepseek-v3p2-thinking` are thinking/non-thinking **modes** of a
+single checkpoint rather than separate models (DeepSeek's API changelog,
+2025-12-01: `deepseek-chat` and `deepseek-reasoner` are the non-thinking and
+thinking modes of DeepSeek-V3.2). `deepseek-v3.2-thinking` is already an alias
+of `deepseek-ai/DeepSeek-V3.2`, which is the right treatment; the remaining
+draft canonicals bake a generation setting into model identity.
+
+- **Action: fold the mode drafts into their checkpoint canonicals as aliases.**

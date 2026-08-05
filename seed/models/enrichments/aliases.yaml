@@ -445,6 +445,9 @@
   aliases:
   - Qwen2.5 72B Instruct Turbo
   - alibaba/qwen2.5-72b-instruct-turbo
+- id: Qwen/Qwen2.5-7B-Instruct
+  aliases:
+  - Qwen-2.5-7B-it
 - id: Qwen/Qwen2.5-7B-Instruct-1M
   aliases:
   - alibaba/Qwen2.5-7B-Instruct-1M
@@ -1493,6 +1496,8 @@
   - unknown/deepseek-v3-671b
 - id: deepseek-ai/DeepSeek-V3.2
   aliases:
+  - DeepSeek-V3.2-chat
+  - DeepSeek-V3.2-reasoner
   - deepseek-3.2
   - deepseek-ai/deepseek-v3.2-maas
   - deepseek-v3-2-251201
@@ -2193,6 +2198,7 @@
   - unknown/llama3-1-8b
 - id: meta-llama/Llama-3.1-8B-Instruct
   aliases:
+  - Llama-3.1-8B-it
   - Meta-Llama-3-1-8B-Instruct-FP8
   - llama3-1-8b-instruct
   - meta.llama3-1-8b-instruct-v1:0
@@ -2202,6 +2208,7 @@
   - Llama 3.2 90B
 - id: meta-llama/Llama-3.3-70B-Instruct
   aliases:
+  - Llama-3.3-70B-it
   - llama-3-3-70b-instruct-maas
   - meta-llama/Meta-Llama-3.3-70B-Instruct
   - meta/llama-3.3-70b-instruct-maas
