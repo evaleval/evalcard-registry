@@ -109,3 +109,25 @@ of `deepseek-ai/DeepSeek-V3.2`, which is the right treatment; the remaining
 draft canonicals bake a generation setting into model identity.
 
 - **Action: fold the mode drafts into their checkpoint canonicals as aliases.**
+
+### Build-only canonical shadowing a seeded dated snapshot
+
+- **`anthropic/Claude-3.7-Sonnet`** is what the resolver returns for the raw
+  forms `Claude 3.7 Sonnet` / `claude-37-sonnet` (confirmed aliases), but that id
+  is declared by **no checked-in seed file** — it exists only as a
+  `resolution_source: inferred`, `review_status: draft` entry in the built
+  tables. The seed meanwhile carries `anthropic/claude-3-7-sonnet-20250219`
+  (plus a `-thinking` twin), which is the exact model string LEXam's own
+  `litellm_eval.py` calls, and which follows the documented closed-model form
+  `{org_id}/{slug}` with a dated snapshot.
+  - Effect: a consumer resolving the display name gets an odd-cased id with no
+    seed provenance, while the dated canonical that names the actual weights
+    sits beside it — two ids for one model, the split this file exists to track.
+  - The LEXam adapter keeps the resolver's current answer rather than
+    re-pointing a widely used id on its own, and reports the mismatch in its
+    `registry_snapshot.json` under `models_absent_from_seed`.
+  - **Action: decide which id is canonical for Claude 3.7 Sonnet.** If the
+    dated one wins, fold the inferred entry in via `skip_source_ids` plus an
+    alias bridge (the treatment already used for `deepseek/deepseek-v3-2-exp`);
+    if the display-name root wins, declare it in `core.yaml` so it has seed
+    provenance.
