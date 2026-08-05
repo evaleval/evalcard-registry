@@ -3,7 +3,7 @@
 
 - id: accuracy
   display_name: Accuracy
-  aliases: ["Acc", "Top-1 Accuracy"]
+  aliases: ["Acc", "Top-1 Accuracy", "Multiple-Choice Accuracy", "Accuracy on Multiple-Choice Questions"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -4433,3 +4433,16 @@
   max_score: 1.0
   metadata: '{}'
   review_status: reviewed
+
+- id: lexam-open-question-judge-score
+  display_name: 'LEXam Open Question Judge Score'
+  aliases:
+  - 'LEXam Open Question Judge Score'
+  - 'Judge Scores on Open Questions'
+  - 'Open Question Judge Score'
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 100.0
+  metadata: '{"kind": "real", "confidence": "high", "family": "bespoke-paper", "source": "0-100 scale. Each judge assigns a per-question correctness score on 0.0-1.0 in 0.1 increments against a reference answer; the ensemble takes the pointwise MINIMUM across three judges (GPT-4o, Qwen3-32B, DeepSeek-V3), and the reported figure is the mean over questions times 100. Same 0-100 convention as the sibling *-judge-score entries.", "provenance": "lexam-adapter", "paper": "https://arxiv.org/abs/2505.12864", "judge_prompt": "https://github.com/LEXam-Benchmark/LEXam/blob/main/customized_judge_async.py"}'
+  review_status: draft
