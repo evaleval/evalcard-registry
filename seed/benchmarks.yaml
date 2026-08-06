@@ -3281,6 +3281,18 @@
     - alm bench
     - alm_bench
 
+- id: alpacaeval-1-0
+  display_name: AlpacaEval 1.0
+  dataset_repo: tatsu-lab/alpaca_eval
+  parent_benchmark_id: null
+  tags: '["general"]'
+  metadata: '{"note": "the original AlpacaEval leaderboard: same 805 instructions as 2.0, but text-davinci-003 as the reference model and alpaca_eval_gpt4 as the judge. A sibling version of alpacaeval-2-0, not a parent — the two report different numbers for the same model and are not comparable"}'
+  review_status: draft
+  aliases:
+    - AlpacaEval v1
+    - alpaca_eval_v1
+    - AlpacaEval 1
+
 - id: alpacaeval-2-0
   preferred_metric: win-rate
   display_name: AlpacaEval 2.0

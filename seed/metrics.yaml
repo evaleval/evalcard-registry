@@ -125,6 +125,25 @@
   metadata: '{"note": "win-rate aggregated across tasks/opponents by median; a different aggregation than mean-win-rate, kept separate like mean-win-rate"}'
   review_status: draft
 
+- id: length-controlled-win-rate
+  display_name: Length-Controlled Win Rate
+  aliases: ["length_controlled_winrate", "LC Win Rate"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 100.0
+  metadata: '{"note": "win-rate debiased for output length via the logistic model in Dubois et al. 2024 (arXiv:2404.04475); the AlpacaEval 2.0 headline metric. Same [0,100] scale as win-rate, but a different estimator, so kept separate"}'
+  review_status: draft
+
+- id: discrete-win-rate
+  display_name: Discrete Win Rate
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 100.0
+  metadata: '{"note": "win-rate with the judge preference thresholded to a win/loss before averaging, so ties get no partial credit; win-rate averages the continuous preference. Reported alongside win-rate by AlpacaEval"}'
+  review_status: draft
+
 - id: harmlessness
   display_name: Harmlessness
   score_type: continuous
@@ -183,6 +202,16 @@
   max_score: null
   metadata: '{}'
   review_status: reviewed
+
+- id: average-response-length
+  display_name: Average Response Length
+  aliases: ["avg_length"]
+  score_type: continuous
+  lower_is_better: null
+  min_score: 0.0
+  max_score: null
+  metadata: '{"unit": "characters", "note": "mean length of the evaluated model output, reported for length-bias context rather than as a quality score — hence lower_is_better: null. Distinct from calvin-avg-seq-length, which counts task sequences on a bounded 0-5 scale"}'
+  review_status: draft
 
 - id: mean-score
   display_name: Mean Score
