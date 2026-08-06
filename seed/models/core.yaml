@@ -13,26 +13,12 @@ skip_source_ids:
 # Dashed/respelled twins of adopted OpenRouter family roots + bare enrichment
 # materializations of folded families — each one's surface forms are bridged
 # onto the surviving canonical in enrichments/aliases.yaml.
-# models.dev draft for a checkpoint that IS on the Hub; superseded by the
-# curated hf canonical deepseek-ai/DeepSeek-V3.2-Exp below, which carries its
-# surface forms as aliases (leaving both would make `deepseek-v3-2-exp`
-# resolve ambiguously).
-- deepseek/deepseek-v3-2-exp
-# Pure thinking/non-thinking MODE variants of a checkpoint, not separate
-# weights: DeepSeek's API changelog (2025-12-01) documents deepseek-chat and
-# deepseek-reasoner as the two modes of one release. A mode belongs in an EEE
-# record's generation_config, not in the model identity, so each raw form is
-# bridged onto its checkpoint in enrichments/aliases.yaml instead. Dated
-# variants (`-0925`) are left alone: a date IS a legitimate identity axis.
-- deepseek/deepseek-v3-2-reasoning
 # Display-name materialization of Claude 3.7 Sonnet minted by tier3_inferred,
 # with no seed provenance and a capitalized slug (all 9 Anthropic ids declared
 # here are lowercase). models.dev already declares the display forms on the
 # conventional `anthropic/claude-sonnet-3.7`, so dropping this artifact makes
 # them resolve there instead of to a generated twin.
 - anthropic/Claude-3.7-Sonnet
-- deepseek/deepseek-v3-2-exp-prompt-thinking
-- fireworks/deepseek-v3p2-thinking
 - alibaba/qwen-3-6-plus
 - alibaba/qwen-3-7-max
 - alibaba/qwen-3-7-plus
@@ -13635,55 +13621,10 @@ entries:
   - wanx/wan-v2-6
   - wan-v2-6
   metadata: '{}'
-# LEXam leaderboard checkpoints that exist on the Hub but no generator carried,
-# so the leaderboard label had no HF-anchored canonical to resolve to (see
-# curation/UPSTREAM_DATA_ISSUES.md). Facts from the HF model API.
-- id: deepseek-ai/DeepSeek-V3.2-Exp
-  resolution_source: hf
-  display_name: DeepSeek-V3.2-Exp
-  org_id: deepseek
-  family: deepseek-v3.2
-  architecture: null
-  params_billions: 685.4
-  parents:
-  - id: deepseek-ai/DeepSeek-V3.2-Exp-Base
-    relationship: finetune
-  open_weights: true
-  release_date: '2025-09-29'
-  input_modalities: null
-  output_modalities: null
-  tags:
-  - open-weight
-  metadata: '{}'
-  review_status: reviewed
-  aliases:
-  - DeepSeek-V3.2-Exp
-  - deepseek-v3-2-exp
-  - DeepSeek V3.2 Exp
-  # Mode variant folded from a skipped draft canonical.
-  - deepseek/deepseek-v3-2-exp-prompt-thinking
-  - deepseek-v3-2-exp-prompt-thinking
-- id: meta-llama/Llama-3.1-405B-Instruct
-  resolution_source: hf
-  display_name: Llama 3.1 405B Instruct
-  org_id: meta
-  family: llama-3.1-405b
-  architecture: null
-  params_billions: 405.9
-  parents:
-  - id: meta-llama/Llama-3.1-405B
-    relationship: finetune
-  open_weights: true
-  release_date: '2024-07-16'
-  input_modalities: null
-  output_modalities: null
-  tags:
-  - open-weight
-  metadata: '{}'
-  review_status: reviewed
-  aliases:
-  - Llama-3.1-405B-it
-  - Meta-Llama-3.1-405B-Instruct
+# LEXam leaderboard checkpoint that exists on the Hub, has no minted slug twin,
+# and whose parent is already a canonical — so adding it introduces no duplicate
+# identity. The other two LEXam gaps are aliased onto their existing minted
+# canonicals instead; see curation/UPSTREAM_DATA_ISSUES.md for why.
 - id: utter-project/EuroLLM-9B-Instruct
   resolution_source: hf
   display_name: EuroLLM 9B Instruct

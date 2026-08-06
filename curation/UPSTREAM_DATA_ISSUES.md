@@ -74,19 +74,38 @@ same physical model split across two id namespaces
 - **`meta-llama/Llama-3.1-405B-Instruct`** — absent; only the Together-hosted
   `Meta-Llama-3.1-405B-Instruct-Turbo` drafts are present.
 
-**Locally handled now:** the three genuinely-missing ones are added as curated `hf` canonicals
-in `seed/models/core.yaml` with the leaderboard labels as aliases
-(`deepseek-ai/DeepSeek-V3.2-Exp`, `meta-llama/Llama-3.1-405B-Instruct`,
-`utter-project/EuroLLM-9B-Instruct`). The superseded models.dev draft
-`deepseek/deepseek-v3-2-exp` is listed in `core.yaml` `skip_source_ids`, since
-keeping both would make `deepseek-v3-2-exp` resolve ambiguously — the same
-failure mode as the `gemma2-9b-it` alias below.
+**Locally handled now:** only `utter-project/EuroLLM-9B-Instruct` is added as a
+curated `hf` canonical — it has no minted slug twin and its parent is already a
+canonical, so it introduces no duplicate identity.
 
-`Qwen3-Next` needs no new canonical — both variants are already registered.
-What it needs is for the benchmark authors to say which one they ran; until then
-a consumer can only keep the variant-agnostic `alibaba/qwen3-next`, because
-picking `-Instruct` or `-Thinking` would be a guess about which weights produced
-the score.
+**The other two are aliased onto the canonicals that already exist**
+(`DeepSeek-V3.2-Exp` → `deepseek/deepseek-v3.2-exp`, `Llama-3.1-405B-it` →
+`meta/llama-3-1-405b-instruct`) rather than minted as HF-anchored twins. I tried
+minting them and `tests/test_gate_invariants.py` rejected it, correctly:
+
+- `test_no_real_hf_id_duplicated_by_slug` — adding `deepseek-ai/DeepSeek-V3.2-Exp`
+  beside `deepseek/deepseek-v3.2-exp` *is* the duplication this repo forbids.
+- `test_no_dangling_parent_edges` — the HF base repos
+  (`DeepSeek-V3.2-Exp-Base`, `Llama-3.1-405B`) are not canonicals here, so the
+  `parents` edges I copied off the model card broke the lineage walks.
+- Folding the slug twins to satisfy the first test then tripped
+  `test_phase0_oracle_lineage_no_loss` and
+  `test_no_parent_edge_names_a_renamed_away_id`, because dated siblings name
+  those slugs as parents.
+
+The lesson is that HF-vs-slug reconciliation is a curation pass with lineage
+consequences, not something a leaderboard adapter's companion PR should carry.
+
+**Also reverted for the same reason:** folding the three pure mode variants
+(`deepseek/deepseek-v3-2-reasoning`, `-exp-prompt-thinking`,
+`fireworks/deepseek-v3p2-thinking`) onto their checkpoints. It broke three
+lineage invariants — the dated `-0925` siblings name those drafts as parents, so
+skipping them dropped `model_group_id` / `model_family_id` and lost typed oracle
+edges. The mode-as-identity problem is real and stays documented below; the fix
+needs to move the parent edges at the same time.
+
+**Action: reconcile the HF/slug pairs and the mode drafts as a dedicated pass,**
+moving parent edges with them. This PR now touches no lineage.
 
 **Why the generator missed them (diagnosed, not guessed):** the hub_stats
 generator records the raw strings it has examined in
@@ -132,13 +151,17 @@ thinking modes of DeepSeek-V3.2). `deepseek-v3.2-thinking` is already an alias
 of `deepseek-ai/DeepSeek-V3.2`, which is the right treatment; the remaining
 draft canonicals bake a generation setting into model identity.
 
-  - **Redirected in this PR** for the three ids whose *only* distinguishing axis
+  - **Attempted in this PR and reverted** (see the coverage-gap section above):
+    redirecting them broke three lineage invariants, because the dated `-0925`
+    siblings name these drafts as parents. Any fold has to move those parent
+    edges in the same change.
+  - Previously described as for the three ids whose *only* distinguishing axis
     is the mode: `deepseek/deepseek-v3-2-reasoning`,
     `deepseek/deepseek-v3-2-exp-prompt-thinking` and
     `fireworks/deepseek-v3p2-thinking` move into `skip_source_ids` with their raw
     forms bridged onto the checkpoint, so those strings now resolve to weights
     rather than to a setting. No EEE adapter emits any of them.
-  - **Verified limit:** on an existing table the three draft *rows* survive,
+  - Note on removal: on an existing table the three draft *rows* survive,
     alias-less. `skip_source_ids` stops them being re-absorbed from
     `tier3_inferred` and a fresh build never creates them, but `--prune-stale`
     removes only **reviewed** entities, so incremental runs keep the drafts.
