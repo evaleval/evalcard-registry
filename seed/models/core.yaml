@@ -18,6 +18,21 @@ skip_source_ids:
 # surface forms as aliases (leaving both would make `deepseek-v3-2-exp`
 # resolve ambiguously).
 - deepseek/deepseek-v3-2-exp
+# Pure thinking/non-thinking MODE variants of a checkpoint, not separate
+# weights: DeepSeek's API changelog (2025-12-01) documents deepseek-chat and
+# deepseek-reasoner as the two modes of one release. A mode belongs in an EEE
+# record's generation_config, not in the model identity, so each raw form is
+# bridged onto its checkpoint in enrichments/aliases.yaml instead. Dated
+# variants (`-0925`) are left alone: a date IS a legitimate identity axis.
+- deepseek/deepseek-v3-2-reasoning
+# Display-name materialization of Claude 3.7 Sonnet minted by tier3_inferred,
+# with no seed provenance and a capitalized slug (all 9 Anthropic ids declared
+# here are lowercase). models.dev already declares the display forms on the
+# conventional `anthropic/claude-sonnet-3.7`, so dropping this artifact makes
+# them resolve there instead of to a generated twin.
+- anthropic/Claude-3.7-Sonnet
+- deepseek/deepseek-v3-2-exp-prompt-thinking
+- fireworks/deepseek-v3p2-thinking
 - alibaba/qwen-3-6-plus
 - alibaba/qwen-3-7-max
 - alibaba/qwen-3-7-plus
@@ -13645,6 +13660,9 @@ entries:
   - DeepSeek-V3.2-Exp
   - deepseek-v3-2-exp
   - DeepSeek V3.2 Exp
+  # Mode variant folded from a skipped draft canonical.
+  - deepseek/deepseek-v3-2-exp-prompt-thinking
+  - deepseek-v3-2-exp-prompt-thinking
 - id: meta-llama/Llama-3.1-405B-Instruct
   resolution_source: hf
   display_name: Llama 3.1 405B Instruct

@@ -60,16 +60,21 @@ same physical model split across two id namespaces
   `deepseek-ai/DeepSeek-V3.2-Speciale` are present and `reviewed`, but the
   `-Exp` checkpoint is absent. `DeepSeek-V3.2-Exp` therefore resolves to the
   models_dev draft `deepseek/deepseek-v3-2-exp`.
-- **`Qwen/Qwen3-Next-80B-A3B-Instruct` / `-Thinking`** — absent; `Qwen3-Next`
-  resolves to the models_dev draft `alibaba/qwen3-next`, which does not
-  distinguish the two released variants.
+- **`Qwen3-Next` resolves to a draft that cannot name a variant.** Both released
+  variants ARE registered as reviewed hf canonicals
+  (`Qwen/Qwen3-Next-80B-A3B-Instruct`, `-Thinking`), but the bare label
+  `Qwen3-Next` resolves to the models_dev draft `alibaba/qwen3-next`, and there
+  are seven `qwen3-next*` ids in total (2 reviewed hf, 5 drafts across
+  `alibaba/` and `aliyun/`). A leaderboard that prints only "Qwen3-Next" is
+  therefore unresolvable to actual weights — not for lack of a canonical, but
+  because the label is ambiguous between two of them.
 - **`utter-project/EuroLLM-9B-Instruct`** — absent; only the base
   `utter-project/EuroLLM-9B` is present, so an instruct-model label can only
   resolve to the base model.
 - **`meta-llama/Llama-3.1-405B-Instruct`** — absent; only the Together-hosted
   `Meta-Llama-3.1-405B-Instruct-Turbo` drafts are present.
 
-**Locally handled now:** three of the four are added as curated `hf` canonicals
+**Locally handled now:** the three genuinely-missing ones are added as curated `hf` canonicals
 in `seed/models/core.yaml` with the leaderboard labels as aliases
 (`deepseek-ai/DeepSeek-V3.2-Exp`, `meta-llama/Llama-3.1-405B-Instruct`,
 `utter-project/EuroLLM-9B-Instruct`). The superseded models.dev draft
@@ -77,16 +82,23 @@ in `seed/models/core.yaml` with the leaderboard labels as aliases
 keeping both would make `deepseek-v3-2-exp` resolve ambiguously — the same
 failure mode as the `gemma2-9b-it` alias below.
 
-`Qwen3-Next` is deliberately **not** added: the leaderboard label does not say
-which released variant was evaluated (`Qwen/Qwen3-Next-80B-A3B-Instruct` vs
-`-Thinking`), so the variant-agnostic `alibaba/qwen3-next` stays until the
-benchmark authors confirm. Adding a canonical would be a guess about which
-weights produced the score.
+`Qwen3-Next` needs no new canonical — both variants are already registered.
+What it needs is for the benchmark authors to say which one they ran; until then
+a consumer can only keep the variant-agnostic `alibaba/qwen3-next`, because
+picking `-Instruct` or `-Thinking` would be a guess about which weights produced
+the score.
 
-- **Action: check why the HF generator missed these repos** (all four exist on
-  the Hub). The curated entries above are a floor, not a fix — once the
-  generator picks them up, the `core.yaml` entries can be thinned back to
-  whatever the generator does not reproduce.
+**Why the generator missed them (diagnosed, not guessed):** the hub_stats
+generator records the raw strings it has examined in
+`seed/models/sources/hub_stats.state.json` `rows_checked_at_etag` (12,659
+entries). None of the three appears there, while their siblings do
+(`deepseek-ai/DeepSeek-V3.2` ✓, `meta-llama/Llama-3.3-70B-Instruct` ✓). So they
+were never *filtered out* — they are absent from the generator's upstream input
+at the pinned `parquet_etag`, which no re-run of the current snapshot will fix.
+
+- **Action: refresh the hub-stats input** (or add these to whatever seeds it)
+  so the generator carries them. The `core.yaml` entries above are a floor, not
+  a fix: once the generator reproduces them, they can be thinned back.
 
 ### Ambiguous instruct alias
 
@@ -95,7 +107,19 @@ weights produced the score.
   `google/gemma-2-9b-it` exists alongside it. Any resolver that normalizes
   punctuation sees both and can land on the base model for an instruct-tuned
   evaluation.
-  - **Action: re-point `gemma2-9b-it` at `google/gemma-2-9b-it`.**
+  - **Cannot be fixed from the enrichment layer — attempted and reverted.**
+    `models_dev.generated.yaml` declares `gemma2-9b-it` on the *base* entry
+    `google/gemma-2-9b` itself. Re-declaring it on `google/gemma-2-9b-it` trips
+    the seed's own alias-collision guard ("the same alias is declared by more
+    than one canonical ... the owner would be seed-order-dependent"), and the
+    enrichment layer unions aliases rather than moving them: there is
+    `skip_ids`/`skip_source_ids` for *entities*, but no equivalent for one wrong
+    alias.
+  - Impact is narrow: only the exact spelling `gemma2-9b-it` is affected. The
+    conventional `gemma-2-9b-it` and display forms like `Gemma-2-9B-it` resolve
+    correctly to the instruct model.
+  - **Action: fix upstream in models.dev, or add an alias-level skip** so a
+    known-wrong single alias can be re-pointed without dropping its entity.
 
 ### Mode-as-model drafts
 
@@ -108,7 +132,26 @@ thinking modes of DeepSeek-V3.2). `deepseek-v3.2-thinking` is already an alias
 of `deepseek-ai/DeepSeek-V3.2`, which is the right treatment; the remaining
 draft canonicals bake a generation setting into model identity.
 
-- **Action: fold the mode drafts into their checkpoint canonicals as aliases.**
+  - **Redirected in this PR** for the three ids whose *only* distinguishing axis
+    is the mode: `deepseek/deepseek-v3-2-reasoning`,
+    `deepseek/deepseek-v3-2-exp-prompt-thinking` and
+    `fireworks/deepseek-v3p2-thinking` move into `skip_source_ids` with their raw
+    forms bridged onto the checkpoint, so those strings now resolve to weights
+    rather than to a setting. No EEE adapter emits any of them.
+  - **Verified limit:** on an existing table the three draft *rows* survive,
+    alias-less. `skip_source_ids` stops them being re-absorbed from
+    `tier3_inferred` and a fresh build never creates them, but `--prune-stale`
+    removes only **reviewed** entities, so incremental runs keep the drafts.
+    Resolution is correct either way; the orphan rows need a draft-pruning pass.
+  - **Rationale, since the registry curates mode ids elsewhere**
+    (`anthropic/claude-haiku-4.5-thinking`, `claude-opus-4.7-non-reasoning`):
+    those are closed models where the mode-suffixed endpoint is the only thing
+    to point at. DeepSeek publishes the weights, so a weight-anchored canonical
+    exists and the mode belongs in an EEE record's `generation_config`. If
+    maintainers prefer mode-as-canonical uniformly, the three lines revert.
+  - **Left alone:** the dated variants (`deepseek/deepseek-v3-2-0925`,
+    `-reasoning-0925`). A date is a legitimate identity axis, so folding them
+    would lose information rather than de-duplicate it.
 
 ### Build-only canonical shadowing a seeded dated snapshot
 
@@ -123,11 +166,21 @@ draft canonicals bake a generation setting into model identity.
   - Effect: a consumer resolving the display name gets an odd-cased id with no
     seed provenance, while the dated canonical that names the actual weights
     sits beside it — two ids for one model, the split this file exists to track.
-  - The LEXam adapter keeps the resolver's current answer rather than
-    re-pointing a widely used id on its own, and reports the mismatch in its
-    `registry_snapshot.json` under `models_absent_from_seed`.
-  - **Action: decide which id is canonical for Claude 3.7 Sonnet.** If the
-    dated one wins, fold the inferred entry in via `skip_source_ids` plus an
-    alias bridge (the treatment already used for `deepseek/deepseek-v3-2-exp`);
-    if the display-name root wins, declare it in `core.yaml` so it has seed
-    provenance.
+  - **Fixed in this PR.** No Every Eval Ever adapter emits the capitalized id —
+    the one apparent hit was a regex artifact (`sciarena` maps the display
+    string `Claude-3-7-Sonnet` to a developer). Since models.dev already
+    declares the display forms on the conventional lowercase
+    `anthropic/claude-sonnet-3.7`, adding the `tier3_inferred` materialization to
+    `skip_source_ids` needs no alias block: `Claude-3.7-Sonnet` /
+    `Claude 3.7 Sonnet` / `claude-37-sonnet` now resolve to
+    `anthropic/claude-sonnet-3.7`, verified on a local rebuild, and the LEXam
+    adapter emits that id.
+  - **Residual risk:** a record already published under the capitalized id no
+    longer matches the canonical. The raw display forms still resolve, so
+    re-ingest lands on the right model; only previously written `model_info.id`
+    values are stale. BenchPress's pinned resolver snapshot (unmerged) also
+    needs a refresh.
+  - **Still open, deliberately:** which of the remaining Claude 3.7 ids is
+    canonical (`claude-sonnet-3.7` vs the dated `claude-3-7-sonnet-20250219` vs
+    `claude-3.7-sonnet-thinking`). This PR removes only the unconventional twin;
+    consolidating the rest is a naming call.

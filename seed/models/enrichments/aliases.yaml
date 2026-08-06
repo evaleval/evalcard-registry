@@ -1498,6 +1498,12 @@
   aliases:
   - DeepSeek-V3.2-chat
   - DeepSeek-V3.2-reasoner
+  # Mode variants folded from skipped draft canonicals (see core.yaml
+  # skip_source_ids): the raw forms still resolve, to the checkpoint.
+  - deepseek/deepseek-v3-2-reasoning
+  - deepseek-v3-2-reasoning
+  - fireworks/deepseek-v3p2-thinking
+  - deepseek-v3p2-thinking
   - deepseek-3.2
   - deepseek-ai/deepseek-v3.2-maas
   - deepseek-v3-2-251201
