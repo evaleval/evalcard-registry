@@ -155,11 +155,13 @@ draft canonicals bake a generation setting into model identity.
 
 ### Build-only canonical shadowing a seeded dated snapshot
 
-- **`anthropic/Claude-3.7-Sonnet`** is what the resolver returns for the raw
-  forms `Claude 3.7 Sonnet` / `claude-37-sonnet` (confirmed aliases), but that id
-  is declared by **no checked-in seed file** — it exists only as a
-  `resolution_source: inferred`, `review_status: draft` entry in the built
-  tables. The seed meanwhile carries `anthropic/claude-3-7-sonnet-20250219`
+- **`anthropic/Claude-3.7-Sonnet`** is declared by **no checked-in seed file** —
+  it exists only as a `resolution_source: inferred`, `review_status: draft` entry
+  materialized into the built tables, where it owns the display forms
+  `Claude 3.7 Sonnet` / `claude-37-sonnet`. (The deployed Space already answers
+  the conventional `anthropic/claude-sonnet-3.7` for those forms, so this is a
+  build-state divergence rather than a live wrong answer — which is also
+  independent confirmation that dropping the twin is the right direction.) The seed meanwhile carries `anthropic/claude-3-7-sonnet-20250219`
   (plus a `-thinking` twin), which is the exact model string LEXam's own
   `litellm_eval.py` calls, and which follows the documented closed-model form
   `{org_id}/{slug}` with a dated snapshot.
