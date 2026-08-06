@@ -585,6 +585,17 @@ Entity IDs use human-readable slugs (not hashes) because they appear in seed fil
 
 ## HF Hub deployment
 
+> [!IMPORTANT]
+> **Merging a seed change does not make it live.** The hosted resolver
+> (`https://evaleval-entity-registry.hf.space`) answers from the deployed
+> dataset repo, not from this git repo, so a new canonical, alias, benchmark,
+> metric or harness in `seed/` reaches consumers only after someone re-runs
+> `seed` against the Hub and the Space reloads. Until then a downstream adapter
+> resolving the new raw value still gets `no_match` — and, because
+> `POST /api/v1/resolve` auto-creates a `draft` on a miss, an unlucky consumer
+> can mint the very duplicate the seed change was meant to prevent. Treat the
+> deploy as part of merging a seed PR.
+
 For production, configure `.env`:
 
 ```
