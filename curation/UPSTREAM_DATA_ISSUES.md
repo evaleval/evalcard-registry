@@ -186,3 +186,32 @@ draft canonicals bake a generation setting into model identity.
     canonical (`claude-sonnet-3.7` vs the dated `claude-3-7-sonnet-20250219` vs
     `claude-3.7-sonnet-thinking`). This PR removes only the unconventional twin;
     consolidating the rest is a naming call.
+
+## Metric ids that name no quantity
+
+Every Eval Ever's `metric identity` validator warns when `metric_id` is a word
+that names no particular quantity, because such an id silently merges unrelated
+numbers from every source that picked the same word. Six ids in
+`seed/metrics.yaml` are exactly that shape, four of them `reviewed`:
+
+  | id | review_status | bounds |
+  |---|---|---|
+  | `average` | draft | [0.0, 1.0] |
+  | `elo` | reviewed | [None, None] |
+  | `mean-score` | reviewed | [None, None] |
+  | `overall` | draft | [0.0, 1.0] |
+  | `rank` | reviewed | [1.0, None] |
+  | `score` | reviewed | [None, None] |
+
+An Elo or a rank is only comparable inside one leaderboard's pool, and
+`score` / `overall` / `average` / `mean-score` say nothing about what was
+measured — the unbounded `min_score: null` on several of them is the same
+information gap seen from the other side. Their presence means a contributor who
+resolves "Score" against the registry is handed an id the datastore validator
+will then flag.
+
+- **Action: decide per id** — retire it in favour of qualified slugs (the
+  registry already prefers `mteb-score`, `codegolf.score`), or keep it with a
+  note that it is intentionally source-local. Either way the alias forms that
+  currently point at it need a target, so this is a curation pass rather than a
+  deletion.
