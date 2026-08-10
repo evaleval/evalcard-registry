@@ -43,3 +43,33 @@ remove the corresponding local override and this entry.
     are kept as aliases, not dropped — dropping would lose resolution of a real
     upstream string. No local data is wrong; the noise is purely upstream.
   - **Action: flag to models.dev to correct the vendor prefixes.**
+
+## EleutherAI/lm-evaluation-harness
+
+- **`ter` is registered as higher-is-better** — `lm_eval/api/metrics.py` declares
+  `@register_metric(metric="ter", higher_is_better=True)` while the aggregation it
+  registers says "Lower is better" in its own docstring and computes
+  `sacrebleu.corpus_ter`, an edit rate. `higher_is_better` is not a sort key or a
+  display hint: `is_higher_better()` (`api/registry.py`) feeds
+  `Task.higher_is_better()`, which lm-eval writes into its results JSON, and the
+  same table correctly says `False` for `perplexity`, `word_perplexity`,
+  `byte_perplexity`, `bits_per_byte` and `brier_score`. So `ter` is the lone
+  inverted entry, and a run that does not override it per task
+  (`api/task.py` reads `higher_is_better` out of a task's `metric_list`) reports
+  the wrong direction.
+  - Local handling: the `ter` metric here states `lower_is_better: true`, the
+    metric's actual direction, and records the contradiction in its `metadata`.
+  - **Action: flag to the lm-evaluation-harness maintainers.** Remove this entry
+    and the metadata note once `higher_is_better=False` lands.
+
+- **`chrf` is documented as chrF++ but computes chrF** — the same file's `chrf`
+  aggregation opens "chrF++ is a tool for automatic evaluation…" and hedges
+  "Higher is better  # TODO I think", but calls `sacrebleu.corpus_chrf(preds, refs)`
+  with the defaults, and sacrebleu is chrF at `word_order=0` and chrF++ only at
+  `word_order=2`. The computed number is chrF; the direction it registers is
+  correct.
+  - Local handling: this registry keeps `chrf` and `chrf-plus-plus` as separate
+    canonicals, and `chrf`'s metadata says which one lm-eval's stat is, so the
+    docstring cannot pull a consumer onto the wrong entry.
+  - **Action: flag to the lm-evaluation-harness maintainers** — a docstring fix,
+    no behaviour change.
