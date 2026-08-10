@@ -90,3 +90,11 @@
   fork_url: null
   metadata: '{}'
   review_status: reviewed
+
+- id: inspect_ai
+  display_name: Inspect AI
+  aliases: ["Inspect", "inspect-ai", "UK AISI Inspect"]
+  version: null
+  fork_url: null
+  metadata: '{"source": "UK AI Security Institute Inspect; the every_eval_ever converter publishes this slug as eval_library.name", "provenance": "eee-converters"}'
+  review_status: draft
