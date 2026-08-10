@@ -70,7 +70,8 @@ def extract_metric(metric_desc: str) -> str:
             return canonical
         # No keyword found — verbose descriptions (4+ words) → generic fallback.
         # Short phrases (2-3 words) pass through so the resolver can still
-        # match them via alias (e.g. "Equivalent (CoT)" → cot-correct).
+        # match them via alias (e.g. "Equivalent (CoT)" →
+        # math-equivalent-chain-of-thought).
         if not from_dot and word_count > 3:
             return "score"
 
@@ -118,6 +119,9 @@ _METRIC_KEYWORDS: list[tuple[str, str]] = [
     (r"recursive[\s_-]*summarization[\s_-]*accuracy", "Accuracy"),
     (r"total[\s_-]*cost",                "cost"),
     (r"cost[\s_-]*per[\s_-]*task",       "cost-per-task"),
+    # Class-averaged F1 (before generic F1, which would swallow both)
+    (r"macro[\s_-]*f1",                  "Macro F1"),
+    (r"micro[\s_-]*f1",                  "Micro F1"),
     # Single-word patterns (generic, checked last by position)
     (r"\baccuracy\b",                    "Accuracy"),
     (r"\bacc\b",                         "Accuracy"),
