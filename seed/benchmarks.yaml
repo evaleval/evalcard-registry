@@ -1627,7 +1627,7 @@
   dataset_repo: null
   parent_benchmark_id: null
   tags: '["agent", "terminal"]'
-  metadata: '{}'
+  metadata: '{"official_task_count": 89, "maintainer_org_id": "terminal-bench"}'
   review_status: reviewed
 
 - id: theory-of-mind
