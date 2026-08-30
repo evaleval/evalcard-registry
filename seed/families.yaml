@@ -240,3 +240,19 @@ apex:
   benchmarks: [apex-v1, apex-agents, apex-swe]
   composite_keys: [apex-v1, apex-agents]
   primary_benchmark_key: apex-v1
+
+# aiXamine (QCRI) — 9 trust-evaluation service leaderboards.
+aixamine:
+  display: aiXamine
+  category: safety
+  tags: '["safety", "security", "privacy"]'
+  composite_keys:
+    - aixamine-adversarial-robustness
+    - aixamine-code-security
+    - aixamine-fairness-bias
+    - aixamine-hallucination
+    - aixamine-jailbreak
+    - aixamine-model-data-privacy
+    - aixamine-ood-robustness
+    - aixamine-over-refusal
+    - aixamine-safety-alignment
