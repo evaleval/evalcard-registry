@@ -4249,7 +4249,7 @@
 # --- lm_eval submission emits that had no canonical home.
 - id: normalized-accuracy
   display_name: Normalized Accuracy
-  aliases: ["acc_norm", "normalized_accuracy", "Normalized accuracy"]
+  aliases: ["acc_norm", "normalized_accuracy", "Normalized accuracy", "acc-norm", "accuracy_norm", "accuracy-norm", "acc_norm,none", "length-normalized accuracy", "Length-normalized accuracy"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
