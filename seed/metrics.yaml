@@ -43,7 +43,7 @@
 
 - id: f1
   display_name: F1 Score
-  aliases: ["F1", "Tokenized F1"]
+  aliases: ["F1", "Tokenized F1", "f1_score", "f1-score"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -2037,6 +2037,8 @@
   display_name: Perplexity
   aliases:
   - Perplexity
+  - ppl
+  - word_perplexity
   score_type: continuous
   lower_is_better: true
   min_score: 1.0
