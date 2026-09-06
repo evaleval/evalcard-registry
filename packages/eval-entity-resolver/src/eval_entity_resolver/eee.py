@@ -70,7 +70,8 @@ def extract_metric(metric_desc: str) -> str:
             return canonical
         # No keyword found — verbose descriptions (4+ words) → generic fallback.
         # Short phrases (2-3 words) pass through so the resolver can still
-        # match them via alias (e.g. "Equivalent (CoT)" → cot-correct).
+        # match them via alias (e.g. "Equivalent (CoT)" →
+        # math-equivalent-chain-of-thought).
         if not from_dot and word_count > 3:
             return "score"
 
@@ -91,10 +92,30 @@ _METRIC_KEYWORDS: list[tuple[str, str]] = [
     (r"pass[\s_-]*at[\s_-]*8(?!\d)",     "Pass@8"),
     (r"pass[\s_-]*at[\s_-]*1(?!\d)",     "Pass@1"),
     (r"mean[\s_-]*win[\s_-]*rate",       "Mean Win Rate"),
+    # AlpacaEval's two win-rate variants are different estimators from the
+    # plain win rate; they must not be swallowed by the generic pattern.
+    # `lc` is anchored so a word merely ending in "lc" ("Calc Win Rate") is a
+    # plain win rate; the price is a camel-case run ("AlpacaEvalLC Win Rate"),
+    # which no known source emits.
+    (r"(?:(?<![a-z])lc|length[\s_-]*controlled)[\s_-]*win[\s_-]*rate", "Length-Controlled Win Rate"),
+    (r"discrete[\s_-]*win[\s_-]*rate",   "Discrete Win Rate"),
     (r"win[\s_-]*rate",                  "Win Rate"),
     (r"mean[\s_-]*response[\s_-]*time",  "Mean Response Time"),
     (r"mean[\s_-]*score",                "Mean Score"),
+    # HELM's near-miss exact-match variants are separately computed stats.
+    (r"prefix[\s_-]*quasi[\s_-]*exact[\s_-]*match", "Prefix Quasi-Exact Match"),
+    (r"quasi[\s_-]*prefix[\s_-]*exact[\s_-]*match", "Prefix Quasi-Exact Match"),
+    (r"quasi[\s_-]*exact[\s_-]*match",   "Quasi-Exact Match"),
+    (r"prefix[\s_-]*exact[\s_-]*match",  "Prefix Exact Match"),
     (r"exact[\s_-]*match",               "Exact Match"),
+    (r"equivalent[\s_-]*\(?chain[\s_-]*of[\s_-]*thought", "Equivalent (CoT)"),
+    (r"\bbrier\b",                       "Brier Score"),
+    # A benchmark-specific judge score is its own canonical, not the generic
+    # score. (LEXam's leaderboard header "Judge Scores on Open Questions" is a
+    # scoped alias of the same metric in the seed and is deliberately NOT
+    # matched here: the extractor is source-agnostic and must not globalise a
+    # header the registry scoped to one source.)
+    (r"open[\s_-]*questions?[\s_-]*judge[\s_-]*scores?", "Open Question Judge Score"),
     (r"bleu[\s_-]*4",                    "BLEU-4"),
     (r"cot[\s_-]*correct",              "COT correct"),
     (r"wb[\s_-]*score",                  "WB Score"),
@@ -108,6 +129,7 @@ _METRIC_KEYWORDS: list[tuple[str, str]] = [
     # Compound accuracy types (before generic accuracy)
     # Patterns sourced from metric_names in evaleval/card_backend eval-list.
     (r"ast[\s_-]*accuracy",              "AST Accuracy"),
+    (r"ifeval[\s_-]*strict",             "IFEval Strict Acc"),
     (r"normali[sz]ed[\s_-]*accuracy",    "Normalized Accuracy"),
     (r"overall[\s_-]*accuracy",          "Accuracy"),
     (r"(?:ir)?relevance[\s_-]*detection[\s_-]*accuracy", "Accuracy"),
@@ -118,6 +140,9 @@ _METRIC_KEYWORDS: list[tuple[str, str]] = [
     (r"recursive[\s_-]*summarization[\s_-]*accuracy", "Accuracy"),
     (r"total[\s_-]*cost",                "cost"),
     (r"cost[\s_-]*per[\s_-]*task",       "cost-per-task"),
+    # Class-averaged F1 (before generic F1, which would swallow both)
+    (r"macro[\s_-]*f1",                  "Macro F1"),
+    (r"micro[\s_-]*f1",                  "Micro F1"),
     # Single-word patterns (generic, checked last by position)
     (r"\baccuracy\b",                    "Accuracy"),
     (r"\bacc\b",                         "Accuracy"),

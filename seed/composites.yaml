@@ -193,3 +193,68 @@ scale-seal-hle:
   display: Scale SEAL HLE Leaderboard
   configs:
     - {config: hle, org: scale-ai}
+
+# --- aiXamine (QCRI) trust-evaluation service leaderboards ---
+aixamine-adversarial-robustness:
+  display: aiXamine Adversarial Robustness
+  family_id: aixamine
+  category: security
+  configs:
+    - aixamine_adversarial_robustness
+  review_status: draft
+aixamine-code-security:
+  display: aiXamine Code Security
+  family_id: aixamine
+  category: security
+  configs:
+    - aixamine_code_security
+  review_status: draft
+aixamine-fairness-bias:
+  display: aiXamine Fairness & Bias
+  family_id: aixamine
+  category: safety
+  configs:
+    - aixamine_fairness_bias
+  review_status: draft
+aixamine-hallucination:
+  display: aiXamine Hallucination
+  family_id: aixamine
+  category: factuality
+  configs:
+    - aixamine_hallucination
+  review_status: draft
+aixamine-jailbreak:
+  display: aiXamine Jailbreak
+  family_id: aixamine
+  category: safety
+  configs:
+    - aixamine_jailbreak
+  review_status: draft
+aixamine-model-data-privacy:
+  display: aiXamine Model & Data Privacy
+  family_id: aixamine
+  category: security
+  configs:
+    - aixamine_model_data_privacy
+  review_status: draft
+aixamine-ood-robustness:
+  display: aiXamine Out-of-Distribution Robustness
+  family_id: aixamine
+  category: security
+  configs:
+    - aixamine_ood_robustness
+  review_status: draft
+aixamine-over-refusal:
+  display: aiXamine Over-Refusal
+  family_id: aixamine
+  category: safety
+  configs:
+    - aixamine_over_refusal
+  review_status: draft
+aixamine-safety-alignment:
+  display: aiXamine Safety & Alignment
+  family_id: aixamine
+  category: safety
+  configs:
+    - aixamine_safety_alignment
+  review_status: draft

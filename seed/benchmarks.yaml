@@ -3281,10 +3281,23 @@
     - alm bench
     - alm_bench
 
+- id: alpacaeval-1-0
+  preferred_metric: win-rate
+  display_name: AlpacaEval 1.0
+  dataset_repo: tatsu-lab/alpaca_eval
+  parent_benchmark_id: null
+  tags: '["general"]'
+  metadata: '{"note": "the original AlpacaEval leaderboard: same 805 instructions as 2.0, but text-davinci-003 as the reference model and alpaca_eval_gpt4 as the judge. A sibling version of alpacaeval-2-0, not a parent — the two report different numbers for the same model and are not comparable"}'
+  review_status: draft
+  aliases:
+    - AlpacaEval v1
+    - alpaca_eval_v1
+    - AlpacaEval 1
+
 - id: alpacaeval-2-0
   preferred_metric: win-rate
+  dataset_repo: tatsu-lab/alpaca_eval
   display_name: AlpacaEval 2.0
-  dataset_repo: null
   parent_benchmark_id: null
   tags: '["general"]'
   metadata: '{}'
@@ -26033,3 +26046,49 @@
     - lambada_openai
     - lambada-openai
     - LAMBADA OpenAI
+
+# --- LEXam (legal reasoning on University of Zurich law exams) ---
+# The two published sub-tasks are SEPARATELY REPORTED datasets (distinct HF
+# configs, distinct leaderboard tables, distinct metrics on different scales,
+# no pooled LEXam-level score), so they stay standalone benchmarks with their
+# own merged pages and are grouped by the `lexam` family in seed/families.yaml
+# — the shape PR #66 established for glue/lambada. Making them
+# `parent_benchmark_id: lexam` slices would fold both onto one page that can
+# only carry one metric, would give that page no best_result, and would make
+# every sub-task row disappear from merged_evals_view the moment any source
+# reports a top-level "LEXam" number.
+
+- id: lexam
+  display_name: LEXam
+  description: Legal reasoning benchmark derived from 340 Swiss law exams across 116 courses; 7,537 questions in English and German, split into open-ended questions and multiple-choice questions with 4/8/16/32 options.
+  dataset_repo: LEXam-Benchmark/LEXam
+  parent_benchmark_id: null
+  tags: '["legal", "reasoning", "multilingual"]'
+  metadata: '{"paper": "https://arxiv.org/abs/2505.12864", "leaderboard": "https://lexam-benchmark.github.io/", "venue": "ICLR 2026"}'
+  review_status: draft
+
+- id: lexam-open-question
+  display_name: LEXam Open Questions
+  aliases: ["lexam.open_question"]
+  scoped_aliases:
+    lexam:
+      - "Judge Scores on Open Questions"
+  description: LEXam sub-task — long-form open-ended law exam questions (test split, n=2,541), graded by a pointwise-minimum ensemble of three LLM judges with human expert validation.
+  dataset_repo: LEXam-Benchmark/LEXam
+  parent_benchmark_id: null
+  tags: '["legal", "reasoning", "long-form"]'
+  metadata: '{"hf_config": "open_question", "hf_split": "test", "samples": 2541}'
+  review_status: draft
+
+- id: lexam-mcq-4-choices
+  display_name: LEXam MCQ (4 choices)
+  aliases: ["lexam.mcq_4_choices"]
+  scoped_aliases:
+    lexam:
+      - "Accuracy on Multiple-Choice Questions"
+  description: LEXam sub-task — multiple-choice law exam questions with four options (n=1,655). This is the configuration the public leaderboard reports; the 8/16/32-choice configs are separate.
+  dataset_repo: LEXam-Benchmark/LEXam
+  parent_benchmark_id: null
+  tags: '["legal", "reasoning", "multiple-choice"]'
+  metadata: '{"hf_config": "mcq_4_choices", "hf_split": "test", "samples": 1655}'
+  review_status: draft

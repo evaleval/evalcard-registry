@@ -13,6 +13,12 @@ skip_source_ids:
 # Dashed/respelled twins of adopted OpenRouter family roots + bare enrichment
 # materializations of folded families — each one's surface forms are bridged
 # onto the surviving canonical in enrichments/aliases.yaml.
+# Display-name materialization of Claude 3.7 Sonnet minted by tier3_inferred,
+# with no seed provenance and a capitalized slug (all 9 Anthropic ids declared
+# here are lowercase). models.dev already declares the display forms on the
+# conventional `anthropic/claude-sonnet-3.7`, so dropping this artifact makes
+# them resolve there instead of to a generated twin.
+- anthropic/Claude-3.7-Sonnet
 - alibaba/qwen-3-6-plus
 - alibaba/qwen-3-7-max
 - alibaba/qwen-3-7-plus
@@ -13615,3 +13621,28 @@ entries:
   - wanx/wan-v2-6
   - wan-v2-6
   metadata: '{}'
+# LEXam leaderboard checkpoint that exists on the Hub, has no minted slug twin,
+# and whose parent is already a canonical — so adding it introduces no duplicate
+# identity. The other two LEXam gaps are aliased onto their existing minted
+# canonicals instead; see curation/UPSTREAM_DATA_ISSUES.md for why.
+- id: utter-project/EuroLLM-9B-Instruct
+  resolution_source: hf
+  display_name: EuroLLM 9B Instruct
+  org_id: utter-project
+  family: eurollm-9b
+  architecture: null
+  params_billions: 9.15
+  parents:
+  - id: utter-project/EuroLLM-9B
+    relationship: finetune
+  open_weights: true
+  release_date: '2024-11-22'
+  input_modalities: null
+  output_modalities: null
+  tags:
+  - open-weight
+  metadata: '{}'
+  review_status: reviewed
+  aliases:
+  - EuroLLM-9B-it
+  - EuroLLM-9B-Instruct

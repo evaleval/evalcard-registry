@@ -16,6 +16,18 @@ import typer
 import yaml
 
 
+def seed_collision_key(s: str) -> str:
+    """The key under which two seed surface forms count as one entity:
+    NFKD + combining-mark strip (so "racé" and "race" collide before the
+    alphanumeric strip would silently drop the accent), casefold, and drop
+    everything but [a-z0-9]. Used by the benchmark collision guard at seed
+    time and by tests/test_seed_unique_ids.py for every flat seed file.
+    Residual: cross-script confusables (Cyrillic 'а') still evade."""
+    decomposed = unicodedata.normalize("NFKD", str(s))
+    base = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]", "", base.casefold())
+
+
 def _json_encode_if_needed(value):
     """Encode lists/dicts as JSON strings; pass through anything else.
 
@@ -570,21 +582,13 @@ def seed(
         URL scheme (single-segment merged eval ids stay collision-free
         with two-segment per-source ids only while benchmark ids are
         slash-free)."""
+        _norm = seed_collision_key
         allow_path = seed_path / "benchmarks_distinct_allowlist.yaml"
         allowed: list[frozenset[str]] = []
         if allow_path.exists():
             with open(allow_path) as f:
                 for group in yaml.safe_load(f) or []:
                     allowed.append(frozenset(group))
-
-        def _norm(s: str) -> str:
-            # NFKD + combining-mark strip folds accent variants ("racé" vs
-            # "race") into one key before the alphanumeric strip would
-            # silently delete the accented char and miss the collision.
-            # Residual: cross-script confusables (Cyrillic 'а') still evade.
-            decomposed = unicodedata.normalize("NFKD", str(s))
-            base = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
-            return re.sub(r"[^a-z0-9]", "", base.casefold())
 
         # Typo guard: every allowlisted id must name a real benchmark,
         # else a stale/misspelled allowlist entry silently stops guarding.
