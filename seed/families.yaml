@@ -304,6 +304,7 @@ aixamine:
     - aixamine-ood-robustness
     - aixamine-over-refusal
     - aixamine-safety-alignment
+  review_status: draft
 
 # LEXam's two published sub-tasks are separately reported datasets (own HF
 # config, own n, own leaderboard table, own metric on its own scale), so they
@@ -315,3 +316,4 @@ lexam:
   category: reasoning
   benchmarks: [lexam, lexam-open-question, lexam-mcq-4-choices]
   primary_benchmark_key: lexam
+  review_status: draft

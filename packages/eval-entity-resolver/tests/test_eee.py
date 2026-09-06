@@ -67,6 +67,11 @@ class TestExtractMetric:
         assert extract_metric("IFEval Strict Accuracy") == "IFEval Strict Acc"
         assert extract_metric("Brier Score") == "Brier Score"
         assert extract_metric("Equivalent (chain of thought)") == "Equivalent (CoT)"
+        # A compound phrase containing " on " is matched before the "X on Y" split.
+        assert extract_metric("Judge Scores on Open Questions") == "Open Question Judge Score"
+        assert extract_metric("LEXam Open Question Judge Score") == "Open Question Judge Score"
+        # `lc` is anchored: a word merely ending in "lc" is not length-controlled.
+        assert extract_metric("Calc Win Rate") == "Win Rate"
         # The generic forms still extract as before.
         assert extract_metric("Win Rate") == "Win Rate"
         assert extract_metric("Exact match") == "Exact Match"

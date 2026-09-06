@@ -138,7 +138,7 @@
   lower_is_better: false
   min_score: 0.0
   max_score: 100.0
-  metadata: '{"note": "win-rate with the soft judge preference rounded to a win or loss before averaging, so a 0.7 preference counts as a full win; explicit ties still count half, as in win-rate (alpaca_eval/metrics/helpers.py ZeroOneScoringRule). Reported alongside win-rate by AlpacaEval"}'
+  metadata: '{"note": "win-rate with the soft judge preference rounded to a win or loss before averaging, so a 1.7 preference on the judge\u2019s [1, 2] scale counts as a full win; explicit ties still count half, as in win-rate (alpaca_eval/metrics/helpers.py ZeroOneScoringRule). Reported alongside win-rate by AlpacaEval"}'
   review_status: draft
 
 - id: harmlessness

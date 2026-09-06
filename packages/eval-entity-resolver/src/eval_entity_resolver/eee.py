@@ -55,6 +55,12 @@ def extract_metric(metric_desc: str) -> str:
     #    be truncated there, or keywords disclosed later in the sentence
     #    ("… reports performance as an Elo score.") are never seen.
     if not from_dot:
+        # A compound metric phrase that itself contains " on " ("Judge Scores
+        # on Open Questions") would be truncated to its generic head; match
+        # those on the untruncated text first.
+        for pattern, canonical in _COMPOUND_ON_PHRASES:
+            if re.search(pattern, text.lower()):
+                return canonical
         m = re.match(r"^(.+?)\s+on\s+\S+", text, re.IGNORECASE)
         if m and len(m.group(1).split()) <= 3:
             text = m.group(1).strip()
@@ -81,6 +87,12 @@ def extract_metric(metric_desc: str) -> str:
 # Ordered from most-specific to most-generic.  When multiple patterns
 # match, the earliest *position* in the input text wins (see
 # _keyword_extract).
+# Metric phrases whose own wording contains " on ", checked before the
+# "X on Y" rule can split them (see extract_metric step 2).
+_COMPOUND_ON_PHRASES: list[tuple[str, str]] = [
+    (r"judge[\s_-]*scores?[\s_-]*on[\s_-]*open[\s_-]*questions?", "Open Question Judge Score"),
+]
+
 _METRIC_KEYWORDS: list[tuple[str, str]] = [
     # Multi-word / compound patterns
     # pass@N: the trailing (?!\d) is load-bearing. Without it `pass@1`
@@ -94,7 +106,7 @@ _METRIC_KEYWORDS: list[tuple[str, str]] = [
     (r"mean[\s_-]*win[\s_-]*rate",       "Mean Win Rate"),
     # AlpacaEval's two win-rate variants are different estimators from the
     # plain win rate; they must not be swallowed by the generic pattern.
-    (r"(?:lc|length[\s_-]*controlled)[\s_-]*win[\s_-]*rate", "Length-Controlled Win Rate"),
+    (r"(?:(?<![a-z])lc|length[\s_-]*controlled)[\s_-]*win[\s_-]*rate", "Length-Controlled Win Rate"),
     (r"discrete[\s_-]*win[\s_-]*rate",   "Discrete Win Rate"),
     (r"win[\s_-]*rate",                  "Win Rate"),
     (r"mean[\s_-]*response[\s_-]*time",  "Mean Response Time"),
@@ -107,6 +119,8 @@ _METRIC_KEYWORDS: list[tuple[str, str]] = [
     (r"exact[\s_-]*match",               "Exact Match"),
     (r"equivalent[\s_-]*\(?chain[\s_-]*of[\s_-]*thought", "Equivalent (CoT)"),
     (r"\bbrier\b",                       "Brier Score"),
+    # A benchmark-specific judge score is its own canonical, not the generic score.
+    (r"open[\s_-]*questions?[\s_-]*judge[\s_-]*scores?", "Open Question Judge Score"),
     (r"bleu[\s_-]*4",                    "BLEU-4"),
     (r"cot[\s_-]*correct",              "COT correct"),
     (r"wb[\s_-]*score",                  "WB Score"),

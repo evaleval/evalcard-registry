@@ -16,6 +16,18 @@ import typer
 import yaml
 
 
+def seed_collision_key(s: str) -> str:
+    """The key under which two seed surface forms count as one entity:
+    NFKD + combining-mark strip (so "racé" and "race" collide before the
+    alphanumeric strip would silently drop the accent), casefold, and drop
+    everything but [a-z0-9]. Used by the benchmark collision guard at seed
+    time and by tests/test_seed_unique_ids.py for every flat seed file.
+    Residual: cross-script confusables (Cyrillic 'а') still evade."""
+    decomposed = unicodedata.normalize("NFKD", str(s))
+    base = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]", "", base.casefold())
+
+
 def _json_encode_if_needed(value):
     """Encode lists/dicts as JSON strings; pass through anything else.
 
@@ -556,6 +568,7 @@ def seed(
         return list(by_id.values())
 
     def _check_benchmark_collisions(entries: list[dict]) -> None:
+        _norm = seed_collision_key
         """Seed-time guard: two benchmarks whose ids, display names, or
         global aliases collapse to the same normalized key (casefold +
         strip non-alphanumerics — stricter than collision_fold's
@@ -576,15 +589,6 @@ def seed(
             with open(allow_path) as f:
                 for group in yaml.safe_load(f) or []:
                     allowed.append(frozenset(group))
-
-        def _norm(s: str) -> str:
-            # NFKD + combining-mark strip folds accent variants ("racé" vs
-            # "race") into one key before the alphanumeric strip would
-            # silently delete the accented char and miss the collision.
-            # Residual: cross-script confusables (Cyrillic 'а') still evade.
-            decomposed = unicodedata.normalize("NFKD", str(s))
-            base = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
-            return re.sub(r"[^a-z0-9]", "", base.casefold())
 
         # Typo guard: every allowlisted id must name a real benchmark,
         # else a stale/misspelled allowlist entry silently stops guarding.
