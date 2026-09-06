@@ -850,7 +850,7 @@
 - id: aixamine
   display_name: aiXamine
   website: https://aixamine.qcri.org
-  aliases: ["aiXamine", "QCRI aiXamine", "QCRI"]
+  aliases: ["aiXamine", "QCRI aiXamine"]
   tags: '["academic", "evaluator"]'
   kind: lab
   metadata: '{"paper": "https://arxiv.org/abs/2608.20554"}'
