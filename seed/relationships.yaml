@@ -364,3 +364,157 @@ relationships:
     entity_b: squad
     relationship_type: version_of
     is_confirmed: true
+
+  # --- lm-evaluation-harness task families (PR #64 follow-up) ---
+  # Suite membership is recorded here, not as parent_benchmark_id: the
+  # parts are separately reported datasets and stay standalone benchmarks
+  # grouped by seed/families.yaml (the livebench / livebench-coding shape).
+  # split_of = task within a suite. This file is curation notes: nothing
+  # in the registry, producer or frontend consumes it today.
+
+  - entity_a: cola
+    entity_b: glue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: mnli
+    entity_b: glue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: mrpc
+    entity_b: glue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: qnli
+    entity_b: glue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: qqp
+    entity_b: glue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: rte
+    entity_b: glue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: sst2
+    entity_b: glue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: stsb
+    entity_b: glue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: wnli
+    entity_b: glue
+    relationship_type: split_of
+    is_confirmed: true
+
+  # MNLI scored on its mismatched validation split.
+  - entity_a: mnli-mismatched
+    entity_b: mnli
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: boolq
+    entity_b: superglue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: cb
+    entity_b: superglue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: copa
+    entity_b: superglue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: multirc
+    entity_b: superglue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: record
+    entity_b: superglue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: wic
+    entity_b: superglue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: wsc
+    entity_b: superglue
+    relationship_type: split_of
+    is_confirmed: true
+
+  # SuperGLUE reuses GLUE's RTE unchanged (harness sglue_rte).
+  - entity_a: rte
+    entity_b: superglue
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: anli-r1
+    entity_b: anli
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: anli-r2
+    entity_b: anli
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: anli-r3
+    entity_b: anli
+    relationship_type: split_of
+    is_confirmed: true
+
+  # Spanish original.
+  - entity_a: head-qa-es
+    entity_b: head-qa
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: head-qa-en
+    entity_b: head-qa
+    relationship_type: split_of
+    is_confirmed: true
+
+  # Google Translate rendering of the Spanish original (Vilares and Gomez-Rodriguez 2019, section 2).
+  - entity_a: head-qa-en
+    entity_b: head-qa-es
+    relationship_type: extended_from
+    is_confirmed: true
+
+  # The original release as distributed by the authors.
+  - entity_a: lambada-standard
+    entity_b: lambada
+    relationship_type: version_of
+    is_confirmed: true
+
+  - entity_a: lambada-openai
+    entity_b: lambada
+    relationship_type: version_of
+    is_confirmed: true
+
+  # Detokenized rewrite of the same passages; scored several points apart.
+  - entity_a: lambada-openai
+    entity_b: lambada-standard
+    relationship_type: extended_from
+    is_confirmed: true
+
+  # Open-domain subset with short answers and no evidence passage (Lee et al. 2019), scored closed-book by the harness; same shape as gpqa-diamond.
+  - entity_a: nq-open
+    entity_b: naturalquestions
+    relationship_type: subset_of
+    is_confirmed: true

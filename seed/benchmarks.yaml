@@ -324,6 +324,10 @@
     - llm_stats_natural_questions
     - natural-questions
     - natural_questions
+    - NQ
+    - nq
+    - Nq
+    - llm_stats_nq
   description: Google Natural Questions — QA dataset of real Google search queries with
     Wikipedia-sourced answers (Kwiatkowski et al. 2019). Reported in evaluations under
     both closed-book (Roberts et al. 2020 formulation) and open-book setups.
@@ -1394,7 +1398,7 @@
 - id: boolq
   preferred_metric: exact-match
   display_name: BoolQ
-  aliases: ["boolq", "BoolQ"]
+  aliases: ["boolq", "BoolQ", "super_glue_boolq"]
   description: BoolQ — yes/no question answering benchmark from naturally occurring web queries (Clark et al. 2019).
   dataset_repo: google/boolq
   parent_benchmark_id: null
@@ -10120,9 +10124,10 @@
 
 - id: head-qa
   display_name: HEAD-QA
-  dataset_repo: null
+  description: HEAD-QA (Vilares and Gomez-Rodriguez 2019), multiple-choice questions from Spanish healthcare specialisation exams. Resolution target for scores that do not name a language (lm-evaluation-harness group headqa); the Spanish original and the English machine translation are standalone members of the head-qa family.
+  dataset_repo: dvilares/head_qa
   parent_benchmark_id: null
-  tags: '["language-understanding"]'
+  tags: '["language-understanding", "medical"]'
   metadata: '{}'
   review_status: reviewed
   aliases:
@@ -10130,7 +10135,36 @@
     - head qa
     - head_qa
     - headqa
+
+- id: head-qa-es
+  preferred_metric: accuracy
+  display_name: HEAD-QA (Spanish)
+  description: The original Spanish HEAD-QA questions; lm-evaluation-harness task headqa_es on the EleutherAI/headqa es config.
+  dataset_repo: EleutherAI/headqa
+  parent_benchmark_id: null
+  tags: '["language-understanding", "medical"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - headqa_es
+    - HEAD-QA-ES
+    - HEAD-QA Spanish
+    - head-qa-es
+
+- id: head-qa-en
+  preferred_metric: accuracy
+  display_name: HEAD-QA (English)
+  description: The authors' Google Translate rendering of HEAD-QA into English, whose translation quality they assessed on a 60-question adequacy and fluency sample (Vilares and Gomez-Rodriguez 2019, section 2); lm-evaluation-harness task headqa_en on the EleutherAI/headqa en config.
+  dataset_repo: EleutherAI/headqa
+  parent_benchmark_id: null
+  tags: '["language-understanding", "medical"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
     - headqa_en
+    - HEAD-QA-EN
+    - HEAD-QA English
+    - head-qa-en
 
 - id: head-to-tail
   display_name: Head-to-Tail
@@ -15830,17 +15864,6 @@
   aliases:
     - NPHardEval4V
 
-- id: nq
-  display_name: Nq
-  dataset_repo: null
-  parent_benchmark_id: null
-  tags: '["general"]'
-  metadata: '{}'
-  review_status: reviewed
-  aliases:
-    - Nq
-    - llm_stats_nq
-
 - id: nt-vot211
   display_name: NT-VOT211
   dataset_repo: null
@@ -20153,15 +20176,18 @@
     - superclue_math6
 
 - id: superglue
-  display_name: Superglue
-  dataset_repo: null
+  display_name: SuperGLUE
+  description: SuperGLUE, an eight-task language-understanding suite (Wang et al. 2019). Resolution target for suite-level scores; boolq, cb, copa, multirc, record, wic and wsc are standalone members of the superglue family, and its RTE task is the same data as GLUE's rte.
+  dataset_repo: aps/super_glue
   parent_benchmark_id: null
-  tags: '["general"]'
+  tags: '["language-understanding", "multi-task"]'
   metadata: '{}'
   review_status: reviewed
   aliases:
     - Superglue
     - llm_stats_superglue
+    - super_glue
+    - super-glue-lm-eval-v1
 
 - id: surface-reconstruction-benchmark
   display_name: Surface Reconstruction Benchmark
@@ -25612,9 +25638,9 @@
 
 
 - id: glue
-  preferred_metric: accuracy
+  preferred_metric: glue-score
   display_name: GLUE
-  description: General Language Understanding Evaluation, a nine-task suite (Wang et al. 2019). Parent of the single-task entries below.
+  description: General Language Understanding Evaluation, a nine-task suite (Wang et al. 2019). Resolution target for suite-level GLUE scores (the macro-average over tasks); all nine tasks are standalone members of the glue family.
   dataset_repo: nyu-mll/glue
   parent_benchmark_id: null
   tags: '["language-understanding", "multi-task"]'
@@ -25629,7 +25655,7 @@
   display_name: CoLA
   description: Corpus of Linguistic Acceptability, a GLUE task scored by Matthews correlation on [-1, 1] rather than accuracy.
   dataset_repo: nyu-mll/glue
-  parent_benchmark_id: glue
+  parent_benchmark_id: null
   tags: '["language-understanding"]'
   metadata: '{}'
   review_status: draft
@@ -25643,7 +25669,7 @@
   display_name: MNLI
   description: Multi-Genre Natural Language Inference, a GLUE task. lm-evaluation-harness scores the matched validation split.
   dataset_repo: nyu-mll/glue
-  parent_benchmark_id: glue
+  parent_benchmark_id: null
   tags: '["language-understanding"]'
   metadata: '{}'
   review_status: draft
@@ -25651,13 +25677,14 @@
     - MNLI
     - mnli
     - glue_mnli
+    - mnli_matched
 
 - id: mrpc
   preferred_metric: accuracy
   display_name: MRPC
   description: Microsoft Research Paraphrase Corpus, a GLUE paraphrase task.
   dataset_repo: nyu-mll/glue
-  parent_benchmark_id: glue
+  parent_benchmark_id: null
   tags: '["language-understanding"]'
   metadata: '{}'
   review_status: draft
@@ -25671,7 +25698,7 @@
   display_name: QNLI
   description: Question NLI, a GLUE task derived from SQuAD. Distinct from BasqueGLUE's task of the same name.
   dataset_repo: nyu-mll/glue
-  parent_benchmark_id: glue
+  parent_benchmark_id: null
   tags: '["language-understanding"]'
   metadata: '{}'
   review_status: draft
@@ -25685,7 +25712,7 @@
   display_name: QQP
   description: Quora Question Pairs, a GLUE duplicate-question task.
   dataset_repo: nyu-mll/glue
-  parent_benchmark_id: glue
+  parent_benchmark_id: null
   tags: '["language-understanding"]'
   metadata: '{}'
   review_status: draft
@@ -25697,9 +25724,9 @@
 - id: rte
   preferred_metric: accuracy
   display_name: RTE
-  description: Recognizing Textual Entailment, a GLUE task.
+  description: Recognizing Textual Entailment (RTE1-3, RTE5), a GLUE task also included unchanged in SuperGLUE; lm-evaluation-harness scores it as rte and sglue_rte.
   dataset_repo: nyu-mll/glue
-  parent_benchmark_id: glue
+  parent_benchmark_id: null
   tags: '["language-understanding"]'
   metadata: '{}'
   review_status: draft
@@ -25707,13 +25734,15 @@
     - RTE
     - rte
     - glue_rte
+    - sglue_rte
+    - super_glue_rte
 
 - id: sst2
   preferred_metric: accuracy
   display_name: SST-2
   description: Stanford Sentiment Treebank binary sentiment, a GLUE task.
   dataset_repo: nyu-mll/glue
-  parent_benchmark_id: glue
+  parent_benchmark_id: null
   tags: '["language-understanding"]'
   metadata: '{}'
   review_status: draft
@@ -25722,12 +25751,59 @@
     - sst2
     - glue_sst2
 
+- id: stsb
+  preferred_metric: correlation
+  display_name: STS-B
+  description: Semantic Textual Similarity Benchmark (Cer et al. 2017), the GLUE regression task scored by Pearson and Spearman correlation. Not shipped by lm-evaluation-harness; included so the glue family is complete.
+  dataset_repo: nyu-mll/glue
+  parent_benchmark_id: null
+  tags: '["language-understanding"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - STS-B
+    - stsb
+    - sts-b
+    - glue_stsb
+    - Semantic Textual Similarity Benchmark
+
+- id: wnli
+  preferred_metric: accuracy
+  display_name: WNLI
+  description: Winograd NLI, the GLUE task that recasts Winograd Schema pronoun resolution as sentence-pair entailment.
+  dataset_repo: nyu-mll/glue
+  parent_benchmark_id: null
+  tags: '["language-understanding"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - WNLI
+    - wnli
+    - glue_wnli
+    - Winograd NLI
+
+- id: mnli-mismatched
+  preferred_metric: accuracy
+  display_name: MNLI (mismatched)
+  description: MNLI scored on the mismatched validation split, whose genres differ from training; lm-evaluation-harness task mnli_mismatch. The matched split is the mnli entry.
+  dataset_repo: nyu-mll/glue
+  parent_benchmark_id: null
+  tags: '["language-understanding"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - MNLI-mm
+    - mnli_mismatch
+    - mnli_mismatched
+    - MNLI mismatched
+    - glue_mnli_mismatch
+
 - id: wic
   preferred_metric: accuracy
   display_name: WiC
   description: Words in Context, a SuperGLUE word-sense task. Distinct from BasqueGLUE's task of the same name.
   dataset_repo: aps/super_glue
-  parent_benchmark_id: superglue
+  parent_benchmark_id: null
   tags: '["language-understanding"]'
   metadata: '{}'
   review_status: draft
@@ -25736,10 +25812,97 @@
     - wic
     - super_glue_wic
 
+- id: cb
+  preferred_metric: accuracy
+  display_name: CommitmentBank
+  description: CommitmentBank (De Marneffe et al. 2019), a three-way entailment task over embedded clauses, in SuperGLUE. Scored by accuracy and F1.
+  dataset_repo: aps/super_glue
+  parent_benchmark_id: null
+  tags: '["language-understanding"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - CB
+    - cb
+    - super_glue_cb
+    - CommitmentBank
+
+- id: copa
+  preferred_metric: accuracy
+  display_name: COPA
+  description: Choice of Plausible Alternatives (Roemmele et al. 2011), a causal-reasoning task in SuperGLUE.
+  dataset_repo: aps/super_glue
+  parent_benchmark_id: null
+  tags: '["commonsense", "reasoning"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - COPA
+    - copa
+    - super_glue_copa
+    - Choice of Plausible Alternatives
+
+- id: multirc
+  preferred_metric: accuracy
+  display_name: MultiRC
+  description: Multi-Sentence Reading Comprehension (Khashabi et al. 2018), multi-answer questions over a paragraph, in SuperGLUE. Officially scored by F1a and exact match; lm-evaluation-harness reports per-answer accuracy.
+  dataset_repo: aps/super_glue
+  parent_benchmark_id: null
+  tags: '["qa", "reading-comprehension"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - MultiRC
+    - multirc
+    - super_glue_multirc
+
+- id: record
+  preferred_metric: f1
+  display_name: ReCoRD
+  description: Reading Comprehension with Commonsense Reasoning (Zhang et al. 2018), cloze-style entity prediction over news, in SuperGLUE. Scored by F1 and exact match.
+  dataset_repo: aps/super_glue
+  parent_benchmark_id: null
+  tags: '["qa", "reading-comprehension", "commonsense"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - ReCoRD
+    - record
+    - super_glue_record
+
+- id: wsc
+  preferred_metric: accuracy
+  display_name: WSC
+  description: Winograd Schema Challenge (Levesque et al. 2012) as cast in SuperGLUE, pronoun coreference as binary classification; lm-evaluation-harness scores the wsc.fixed config.
+  dataset_repo: aps/super_glue
+  parent_benchmark_id: null
+  tags: '["commonsense", "reasoning"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - WSC
+    - wsc
+    - super_glue_wsc
+    - Winograd Schema Challenge
+
+- id: anli
+  preferred_metric: accuracy
+  display_name: ANLI
+  description: Adversarial NLI (Nie et al. 2020), collected in three human-and-model-in-the-loop rounds of increasing difficulty. Resolution target for pooled or averaged ANLI scores (lm-evaluation-harness group anli); the rounds are standalone members of the anli family.
+  dataset_repo: facebook/anli
+  parent_benchmark_id: null
+  tags: '["reasoning"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - ANLI
+    - anli
+    - Adversarial NLI
+
 - id: anli-r1
   preferred_metric: accuracy
   display_name: ANLI R1
-  description: Adversarial NLI round 1 (Nie et al. 2020).
+  description: Adversarial NLI round 1 (Nie et al. 2020), the round collected against a BERT-large adversary.
   dataset_repo: facebook/anli
   parent_benchmark_id: null
   tags: '["reasoning"]'
@@ -25751,13 +25914,41 @@
     - anli-r1
     - anli round 1
 
+- id: anli-r2
+  preferred_metric: accuracy
+  display_name: ANLI R2
+  description: Adversarial NLI round 2 (Nie et al. 2020), collected against a RoBERTa adversary trained on round 1.
+  dataset_repo: facebook/anli
+  parent_benchmark_id: null
+  tags: '["reasoning"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - ANLI R2
+    - anli_r2
+    - anli round 2
+
+- id: anli-r3
+  preferred_metric: accuracy
+  display_name: ANLI R3
+  description: Adversarial NLI round 3 (Nie et al. 2020), collected against a RoBERTa adversary trained on rounds 1-2 over broader source domains.
+  dataset_repo: facebook/anli
+  parent_benchmark_id: null
+  tags: '["reasoning"]'
+  metadata: '{}'
+  review_status: draft
+  aliases:
+    - ANLI R3
+    - anli_r3
+    - anli round 3
+
 - id: medmcqa
   preferred_metric: accuracy
   display_name: MedMCQA
   description: Medical multiple-choice QA from Indian medical entrance exams (Pal et al. 2022). Its test labels are withheld, so harnesses score the validation split.
   dataset_repo: openlifescienceai/medmcqa
   parent_benchmark_id: null
-  tags: '["medicine", "qa"]'
+  tags: '["medical", "qa"]'
   metadata: '{}'
   review_status: draft
   aliases:
@@ -25768,7 +25959,7 @@
 - id: nq-open
   preferred_metric: exact-match
   display_name: Natural Questions (open)
-  description: Open-domain Natural Questions, answered without a provided passage (Lee et al. 2019).
+  description: NQ-Open, the open-domain subset of Natural Questions with short answers (at most 5 tokens) and no evidence passage (Lee et al. 2019). lm-evaluation-harness task nq_open scores it closed-book, without retrieval.
   dataset_repo: google-research-datasets/nq_open
   parent_benchmark_id: null
   tags: '["qa"]'
@@ -25805,7 +25996,7 @@
 - id: lambada
   preferred_metric: accuracy
   display_name: LAMBADA
-  description: Last-word prediction requiring broad discourse context (Paperno et al. 2016). Parent of the two corpora below; use a child where the variant is known.
+  description: Last-word prediction requiring broad discourse context (Paperno et al. 2016). Resolution target for sources that do not say which corpus they scored; the two corpora are standalone members of the lambada family.
   dataset_repo: null
   parent_benchmark_id: null
   tags: '["language-modeling"]'
@@ -25820,7 +26011,7 @@
   display_name: LAMBADA (standard)
   description: The original LAMBADA release as distributed by its authors, scored by lm-evaluation-harness as lambada_standard.
   dataset_repo: cimec/lambada
-  parent_benchmark_id: lambada
+  parent_benchmark_id: null
   tags: '["language-modeling"]'
   metadata: '{}'
   review_status: draft
@@ -25834,7 +26025,7 @@
   display_name: LAMBADA (OpenAI)
   description: OpenAI's detokenized rewrite of the same passages, used for the GPT-2 and GPT-3 reported numbers and scored by lm-evaluation-harness as lambada_openai.
   dataset_repo: EleutherAI/lambada_openai
-  parent_benchmark_id: lambada
+  parent_benchmark_id: null
   tags: '["language-modeling"]'
   metadata: '{}'
   review_status: draft

@@ -240,3 +240,52 @@ apex:
   benchmarks: [apex-v1, apex-agents, apex-swe]
   composite_keys: [apex-v1, apex-agents]
   primary_benchmark_key: apex-v1
+
+# --- lm-evaluation-harness task families (PR #64 follow-up) ---------------
+# Suites whose parts are separately reported datasets. Members are
+# standalone benchmarks (no parent_benchmark_id) so each keeps its own
+# merged page; the suite root is the resolution target for suite-level
+# scores. Same shape as `livebench`. Display names carry the " family"
+# suffix like `mmlu`/`gpqa`: the frontend re-humanizes a display that
+# slugifies to the key (family-table.tsx), which would render GLUE as
+# "Glue". The producer picks the family headline by key == benchmark
+# id (sidecars._mark_family_primary_benchmark); primary_benchmark_key
+# is recorded for the registry API and future producer wiring.
+
+glue:
+  display: GLUE family
+  category: general
+  benchmarks: [glue, cola, mnli, mnli-mismatched, mrpc, qnli, qqp, rte, sst2, stsb, wnli]
+  primary_benchmark_key: glue
+
+superglue:
+  display: SuperGLUE family
+  category: general
+  benchmarks: [superglue, boolq, cb, copa, multirc, record, wic, wsc]
+  primary_benchmark_key: superglue
+
+anli:
+  display: ANLI family
+  category: reasoning
+  benchmarks: [anli, anli-r1, anli-r2, anli-r3]
+  primary_benchmark_key: anli
+
+head-qa:
+  display: HEAD-QA family
+  category: knowledge
+  benchmarks: [head-qa, head-qa-es, head-qa-en]
+  primary_benchmark_key: head-qa
+
+lambada:
+  display: LAMBADA family
+  category: general
+  benchmarks: [lambada, lambada-standard, lambada-openai]
+  primary_benchmark_key: lambada
+
+# NQ-Open is the open-domain subset of Natural Questions (scored
+# closed-book by the harness); same shape as the gpqa family.
+naturalquestions:
+  display: Natural Questions family
+  category: knowledge
+  benchmarks: [naturalquestions, nq-open]
+  primary_benchmark_key: naturalquestions
