@@ -46,7 +46,9 @@ remove the corresponding local override and this entry.
 
 ## EleutherAI/lm-evaluation-harness
 
-- **`ter` is registered as higher-is-better** — `lm_eval/api/metrics.py` declares
+- **`ter` is registered as higher-is-better in releases through v0.4.12 (fixed in
+  v0.4.13 by `ccde35c8`, 2026-08-26, PR #3993)**
+  — `lm_eval/api/metrics.py` declared
   `@register_metric(metric="ter", higher_is_better=True)` while the aggregation it
   registers says "Lower is better" in its own docstring and computes
   `sacrebleu.corpus_ter`, an edit rate. `higher_is_better` is not a sort key or a
@@ -59,11 +61,13 @@ remove the corresponding local override and this entry.
   the wrong direction.
   - Local handling: the `ter` metric here states `lower_is_better: true`, the
     metric's actual direction, and records the contradiction in its `metadata`.
-  - **Action: flag to the lm-evaluation-harness maintainers.** Remove this entry
-    and the metadata note once `higher_is_better=False` lands.
+  - **Action: none upstream (released in v0.4.13).** Keep this entry and the
+    metadata note while results produced by v0.4.12 and earlier are still being
+    converted; they report the inverted direction.
 
-- **`chrf` is documented as chrF++ but computes chrF** — the same file's `chrf`
-  aggregation opens "chrF++ is a tool for automatic evaluation…" and hedges
+- **`chrf` was documented as chrF++ but computes chrF (docstring fixed in v0.4.13
+  by `ccde35c8`, 2026-08-26; a separate `chrf++` metric followed in `06e3cb5f`)** —
+  through v0.4.12 the `chrf` aggregation opens "chrF++ is a tool for automatic evaluation…" and hedges
   "Higher is better  # TODO I think", but calls `sacrebleu.corpus_chrf(preds, refs)`
   with the defaults, and sacrebleu is chrF at `word_order=0` and chrF++ only at
   `word_order=2`. The computed number is chrF; the direction it registers is
@@ -71,8 +75,8 @@ remove the corresponding local override and this entry.
   - Local handling: this registry keeps `chrf` and `chrf-plus-plus` as separate
     canonicals, and `chrf`'s metadata says which one lm-eval's stat is, so the
     docstring cannot pull a consumer onto the wrong entry.
-  - **Action: flag to the lm-evaluation-harness maintainers** — a docstring fix,
-    no behaviour change.
+  - **Action: none upstream (released in v0.4.13).** The computed number was
+    always chrF, so nothing changes for consumers; the separate canonicals stay.
 
 ## Coverage gaps found while resolving the LEXam leaderboard
 

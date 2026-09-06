@@ -12,7 +12,9 @@ benchmark files. Reads the YAML directly so it runs without built fixtures.
 """
 from __future__ import annotations
 
-from collections import Counter
+import re
+import unicodedata
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import pytest
@@ -54,6 +56,16 @@ _StrictLoader.add_constructor(
 )
 
 
+def _loader_key(value: str) -> str:
+    """The seed loader's collision key (`_check_benchmark_collisions._norm`):
+    NFKD, strip combining marks, casefold, drop non-alphanumerics. Two ids
+    that agree under it (`micro-f1` / `micro_f1` / `MicroF1`) are one entity
+    split in two, which the exact-string check would miss."""
+    decomposed = unicodedata.normalize("NFKD", str(value))
+    base = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]", "", base.casefold())
+
+
 @pytest.mark.parametrize("name", LIST_SEEDS)
 def test_list_seed_ids_are_unique(name):
     path = SEED / name
@@ -61,9 +73,14 @@ def test_list_seed_ids_are_unique(name):
         pytest.skip(f"{name} not present")
     entries = yaml.safe_load(path.read_text()) or []
     assert isinstance(entries, list), f"{name}: expected a top-level list"
-    counts = Counter(str(e.get("id")) for e in entries if isinstance(e, dict))
-    dups = sorted(k for k, v in counts.items() if v > 1)
-    assert dups == [], f"{name}: id defined more than once: {dups}"
+    ids = [str(e.get("id")) for e in entries if isinstance(e, dict)]
+    exact = sorted(k for k, v in Counter(ids).items() if v > 1)
+    assert exact == [], f"{name}: id defined more than once: {exact}"
+    by_key = defaultdict(list)
+    for i in ids:
+        by_key[_loader_key(i)].append(i)
+    split = sorted(v for v in by_key.values() if len(v) > 1)
+    assert split == [], f"{name}: ids that differ only by case/separators: {split}"
 
 
 @pytest.mark.parametrize("name", MAPPING_SEEDS)

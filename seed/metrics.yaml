@@ -138,7 +138,7 @@
   lower_is_better: false
   min_score: 0.0
   max_score: 100.0
-  metadata: '{"note": "win-rate with the judge preference thresholded to a win/loss before averaging, so ties get no partial credit; win-rate averages the continuous preference. Reported alongside win-rate by AlpacaEval"}'
+  metadata: '{"note": "win-rate with the soft judge preference rounded to a win or loss before averaging, so a 0.7 preference counts as a full win; explicit ties still count half, as in win-rate (alpaca_eval/metrics/helpers.py ZeroOneScoringRule). Reported alongside win-rate by AlpacaEval"}'
   review_status: draft
 
 - id: harmlessness
@@ -4580,7 +4580,7 @@
   lower_is_better: false
   min_score: 0.0
   max_score: 1.0
-  metadata: '{"kind": "real", "confidence": "high", "source": "sacrebleu corpus_chrf: character n-gram F-score, beta=2, char_order=6, word_order=0. Reached through lm-evaluation-harness api/metrics.py chrf.", "provenance": "eee-converters", "note": "plain chrF, not chrf-plus-plus: sacrebleu becomes chrF++ only at word_order=2 and lm-eval calls corpus_chrf with the defaults, so the two are different numbers on the same run. lm-eval labels this one chrF++ in its docstring while computing chrF.", "scale": "sacrebleu reports this x100; the [0, 1] here matches the chrf-plus-plus and bleu entries, and evaleval/eval-card-registry#57 tracks the registry-wide choice"}'
+  metadata: '{"kind": "real", "confidence": "high", "source": "sacrebleu corpus_chrf: character n-gram F-score, beta=2, char_order=6, word_order=0. Reached through lm-evaluation-harness api/metrics.py chrf.", "provenance": "eee-converters", "note": "plain chrF, not chrf-plus-plus: sacrebleu becomes chrF++ only at word_order=2 and lm-eval calls corpus_chrf with the defaults, so the two are different numbers on the same run. lm-eval releases through v0.4.12 label this one chrF++ in the docstring while computing chrF (docstring fixed in v0.4.13).", "scale": "sacrebleu reports this x100; the [0, 1] here matches the chrf-plus-plus and bleu entries, and evaleval/eval-card-registry#57 tracks the registry-wide choice"}'
   review_status: draft
 
 - id: ter
@@ -4589,7 +4589,7 @@
   lower_is_better: true
   min_score: 0.0
   max_score: null
-  metadata: '{"kind": "real", "confidence": "high", "source": "sacrebleu corpus_ter: Translation Edit Rate, the edits needed to turn the hypothesis into a reference divided by the reference length (Snover et al. 2006). Reached through lm-evaluation-harness api/metrics.py ter.", "provenance": "eee-converters", "note": "an error rate, so lower is better and there is no ceiling: a hypothesis can need more edits than the reference has words. lm-evaluation-harness registers this metric higher_is_better=True, contradicting its own aggregation docstring (\"Lower is better\") and the metric definition; see curation/UPSTREAM_DATA_ISSUES.md", "scale": "sacrebleu reports this x100; the bound here matches the wer and cer entries"}'
+  metadata: '{"kind": "real", "confidence": "high", "source": "sacrebleu corpus_ter: Translation Edit Rate, the edits needed to turn the hypothesis into a reference divided by the reference length (Snover et al. 2006). Reached through lm-evaluation-harness api/metrics.py ter.", "provenance": "eee-converters", "note": "an error rate, so lower is better and there is no ceiling: a hypothesis can need more edits than the reference has words. lm-evaluation-harness releases through v0.4.12 register this metric higher_is_better=True, contradicting the metric definition; fixed in v0.4.13 (ccde35c8, 2026-08-26), see curation/UPSTREAM_DATA_ISSUES.md", "scale": "sacrebleu reports this x100; the bound here matches the wer and cer entries"}'
   review_status: draft
 
 - id: lexam-open-question-judge-score

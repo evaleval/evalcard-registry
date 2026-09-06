@@ -54,6 +54,23 @@ class TestExtractMetric:
         """
         assert extract_metric("Macro F1") == "Macro F1"
         assert extract_metric("Micro F1") == "Micro F1"
+
+    def test_compound_metric_names_are_not_swallowed_by_the_generic_keyword(self):
+        # Each of these names a metric the registry keeps separate from the
+        # generic one its tail spells; the generic pattern must not win.
+        assert extract_metric("Length-Controlled Win Rate") == "Length-Controlled Win Rate"
+        assert extract_metric("LC Win Rate") == "Length-Controlled Win Rate"
+        assert extract_metric("Discrete Win Rate") == "Discrete Win Rate"
+        assert extract_metric("Quasi-Exact Match") == "Quasi-Exact Match"
+        assert extract_metric("Prefix Exact Match") == "Prefix Exact Match"
+        assert extract_metric("Prefix Quasi-Exact Match") == "Prefix Quasi-Exact Match"
+        assert extract_metric("IFEval Strict Accuracy") == "IFEval Strict Acc"
+        assert extract_metric("Brier Score") == "Brier Score"
+        assert extract_metric("Equivalent (chain of thought)") == "Equivalent (CoT)"
+        # The generic forms still extract as before.
+        assert extract_metric("Win Rate") == "Win Rate"
+        assert extract_metric("Exact match") == "Exact Match"
+        assert extract_metric("Mean Win Rate") == "Mean Win Rate"
         assert extract_metric("Tokenized F1") == "F1"
 
     def test_dot_notation_extracts_win_rate(self):
