@@ -845,3 +845,13 @@
   kind: community
   metadata: '{}'
   review_status: reviewed
+
+# --- aiXamine — QCRI LLM trust-evaluation platform (evaluator) ---
+- id: aixamine
+  display_name: aiXamine
+  website: https://aixamine.qcri.org
+  aliases: ["aiXamine", "QCRI aiXamine"]
+  tags: '["academic", "evaluator"]'
+  kind: lab
+  metadata: '{"paper": "https://arxiv.org/abs/2608.20554"}'
+  review_status: reviewed
