@@ -305,3 +305,14 @@ aixamine:
     - aixamine-ood-robustness
     - aixamine-over-refusal
     - aixamine-safety-alignment
+
+# LEXam's two published sub-tasks are separately reported datasets (own HF
+# config, own n, own leaderboard table, own metric on its own scale), so they
+# stay standalone benchmarks grouped here rather than `parent_benchmark_id`
+# slices — same shape as the glue / lambada families above. The root `lexam`
+# is the resolution target for any LEXam-level reference.
+lexam:
+  display: LEXam family
+  category: reasoning
+  benchmarks: [lexam, lexam-open-question, lexam-mcq-4-choices]
+  primary_benchmark_key: lexam

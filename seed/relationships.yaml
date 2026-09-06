@@ -528,3 +528,16 @@ relationships:
     entity_b: naturalquestions
     relationship_type: subset_of
     is_confirmed: true
+
+  # --- LEXam sub-tasks ---
+  # Membership recorded here, not as parent_benchmark_id (see families.yaml).
+
+  - entity_a: lexam-open-question
+    entity_b: lexam
+    relationship_type: split_of
+    is_confirmed: true
+
+  - entity_a: lexam-mcq-4-choices
+    entity_b: lexam
+    relationship_type: split_of
+    is_confirmed: true

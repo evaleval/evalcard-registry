@@ -104,3 +104,11 @@
   fork_url: null
   metadata: '{"source": "UK AI Security Institute Inspect; the every_eval_ever converter publishes this slug as eval_library.name", "provenance": "eee-converters"}'
   review_status: draft
+
+- id: lighteval
+  display_name: Lighteval
+  aliases: ["lighteval", "Lighteval", "hf-lighteval"]
+  version: null
+  fork_url: null
+  metadata: '{"note": "HuggingFace lighteval (https://github.com/huggingface/lighteval). The LEXam benchmark ships its tasks as lighteval community tasks (community|lexamoq_*, community|lexammcq_*) in a vendored fork at https://github.com/LEXam-Benchmark/LEXam/tree/main/lighteval; that fork is one consumer, not this canonical harness."}'
+  review_status: reviewed
