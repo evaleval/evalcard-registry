@@ -582,6 +582,9 @@
   display_name: MC2Acc
   aliases:
   - MC2Acc
+  # The stat name lm-evaluation-harness reports it under, and the key the
+  # every_eval_ever lm_eval converter carries bounds for.
+  - mc2
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -2677,6 +2680,10 @@
   aliases:
   - 'Macro F1'
   - 'F1-macro'
+  # HELM's stat name for this quantity (schema_classic.yaml
+  # classification_macro_f1, display_name "Macro-F1"), which the
+  # every_eval_ever HELM converter publishes verbatim.
+  - classification_macro_f1
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
