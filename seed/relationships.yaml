@@ -72,6 +72,16 @@ relationships:
     relationship_type: version_of
     is_confirmed: true
 
+  # Same 805-instruction set; 2.0 swapped the reference model
+  # (text-davinci-003 -> gpt4_turbo) and the judge (alpaca_eval_gpt4 ->
+  # weighted_alpaca_eval_gpt4_turbo), so the two leaderboards are not
+  # score-comparable. Version lineage, not hierarchy nesting -- both keep
+  # parent_benchmark_id: null.
+  - entity_a: alpacaeval-2-0
+    entity_b: alpacaeval-1-0
+    relationship_type: version_of
+    is_confirmed: true
+
   - entity_a: math-500
     entity_b: math
     relationship_type: subset_of
