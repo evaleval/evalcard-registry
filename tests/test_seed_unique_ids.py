@@ -6,8 +6,9 @@ in families.yaml / composites.yaml is silently last-wins at YAML load time.
 Neither raises. Two rebases in one week each produced such a duplicate
 (`length-controlled-win-rate` in #55, the perplexity family in #60) because
 the colliding blocks sat thousands of lines apart and merged cleanly. The
-existing duplicate gates cover models and orgs only; this one covers the
-rest. Reads the YAML directly so it runs without built fixtures.
+existing duplicate gates cover canonical model and org ids only; this one
+covers the flat seeds, the model enrichment layers and the generated
+benchmark files. Reads the YAML directly so it runs without built fixtures.
 """
 from __future__ import annotations
 
@@ -21,7 +22,10 @@ SEED = Path(__file__).resolve().parent.parent / "seed"
 
 # Files whose top level is a list of {id: ...} entries.
 LIST_SEEDS = ("metrics.yaml", "benchmarks.yaml", "harnesses.yaml", "orgs.yaml",
-              "inference_platforms.yaml")
+              "inference_platforms.yaml", "models/enrichments/aliases.yaml",
+              "models/enrichments/parents.yaml",
+              *sorted(p.relative_to(SEED).as_posix()
+                      for p in (SEED / "benchmarks_generated").glob("*.yaml")))
 # Files whose top level is a {slug: {...}} mapping.
 MAPPING_SEEDS = ("families.yaml", "composites.yaml")
 

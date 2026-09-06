@@ -89,7 +89,7 @@ same physical model split across two id namespaces
   2025-09-29) and its siblings `deepseek-ai/DeepSeek-V3.2` and
   `deepseek-ai/DeepSeek-V3.2-Speciale` are present and `reviewed`, but the
   `-Exp` checkpoint is absent. `DeepSeek-V3.2-Exp` therefore resolves to the
-  models_dev draft `deepseek/deepseek-v3-2-exp`.
+  models_dev draft `deepseek/deepseek-v3.2-exp`.
 - **`Qwen3-Next` resolves to a draft that cannot name a variant.** Both released
   variants ARE registered as reviewed hf canonicals
   (`Qwen/Qwen3-Next-80B-A3B-Instruct`, `-Thinking`), but the bare label

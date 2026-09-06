@@ -1497,11 +1497,9 @@
 - id: deepseek/deepseek-v3.2-exp
   aliases:
   - DeepSeek-V3.2-Exp
-  - DeepSeek V3.2 Exp
 - id: deepseek-ai/DeepSeek-V3.2
   aliases:
   - DeepSeek-V3.2-chat
-  - DeepSeek-V3.2-reasoner
   - deepseek-3.2
   - deepseek-ai/deepseek-v3.2-maas
   - deepseek-v3-2-251201
@@ -1586,6 +1584,7 @@
   aliases:
   - DeepSeek V3.2 Reasoning
   - deepseek/deepseek-v3.2-thinking
+  - DeepSeek-V3.2-reasoner
 - id: deepseek/deepseek-v3-2-reasoning-0925
   aliases:
   - DeepSeek V3.2 Reasoning (0925)
@@ -2200,9 +2199,6 @@
   aliases:
   - llama3.1-8b
   - unknown/llama3-1-8b
-- id: meta/llama-3-1-405b-instruct
-  aliases:
-  - Llama-3.1-405B-it
 - id: meta-llama/Llama-3.1-8B-Instruct
   aliases:
   - Llama-3.1-8B-it
@@ -2311,6 +2307,7 @@
 - id: meta/llama-3-1-405b-instruct
   aliases:
   - meta-llama/Meta-Llama-3.1-405B-Instruct
+  - Llama-3.1-405B-it
 - id: meta/llama-3-3-70b
   aliases:
   - meta/llama3-3-70b

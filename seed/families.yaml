@@ -294,7 +294,6 @@ naturalquestions:
 aixamine:
   display: aiXamine
   category: safety
-  tags: '["safety", "security", "privacy"]'
   composite_keys:
     - aixamine-adversarial-robustness
     - aixamine-code-security

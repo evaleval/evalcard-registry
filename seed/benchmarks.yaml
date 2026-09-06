@@ -3282,6 +3282,7 @@
     - alm_bench
 
 - id: alpacaeval-1-0
+  preferred_metric: win-rate
   display_name: AlpacaEval 1.0
   dataset_repo: tatsu-lab/alpaca_eval
   parent_benchmark_id: null
@@ -3295,8 +3296,8 @@
 
 - id: alpacaeval-2-0
   preferred_metric: win-rate
+  dataset_repo: tatsu-lab/alpaca_eval
   display_name: AlpacaEval 2.0
-  dataset_repo: null
   parent_benchmark_id: null
   tags: '["general"]'
   metadata: '{}'
@@ -26059,30 +26060,35 @@
 
 - id: lexam
   display_name: LEXam
-  aliases: ["LEXam", "lexam"]
   description: Legal reasoning benchmark derived from 340 Swiss law exams across 116 courses; 7,537 questions in English and German, split into open-ended questions and multiple-choice questions with 4/8/16/32 options.
   dataset_repo: LEXam-Benchmark/LEXam
   parent_benchmark_id: null
   tags: '["legal", "reasoning", "multilingual"]'
   metadata: '{"paper": "https://arxiv.org/abs/2505.12864", "leaderboard": "https://lexam-benchmark.github.io/", "venue": "ICLR 2026"}'
-  review_status: reviewed
+  review_status: draft
 
 - id: lexam-open-question
   display_name: LEXam Open Questions
-  aliases: ["lexam.open_question", "Judge Scores on Open Questions"]
+  aliases: ["lexam.open_question"]
+  scoped_aliases:
+    lexam:
+      - "Judge Scores on Open Questions"
   description: LEXam sub-task — long-form open-ended law exam questions (test split, n=2,541), graded by a pointwise-minimum ensemble of three LLM judges with human expert validation.
   dataset_repo: LEXam-Benchmark/LEXam
   parent_benchmark_id: null
   tags: '["legal", "reasoning", "long-form"]'
   metadata: '{"hf_config": "open_question", "hf_split": "test", "samples": 2541}'
-  review_status: reviewed
+  review_status: draft
 
 - id: lexam-mcq-4-choices
   display_name: LEXam MCQ (4 choices)
-  aliases: ["lexam.mcq_4_choices", "Accuracy on Multiple-Choice Questions"]
+  aliases: ["lexam.mcq_4_choices"]
+  scoped_aliases:
+    lexam:
+      - "Accuracy on Multiple-Choice Questions"
   description: LEXam sub-task — multiple-choice law exam questions with four options (n=1,655). This is the configuration the public leaderboard reports; the 8/16/32-choice configs are separate.
   dataset_repo: LEXam-Benchmark/LEXam
   parent_benchmark_id: null
   tags: '["legal", "reasoning", "multiple-choice"]'
   metadata: '{"hf_config": "mcq_4_choices", "hf_split": "test", "samples": 1655}'
-  review_status: reviewed
+  review_status: draft

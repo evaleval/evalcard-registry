@@ -21,8 +21,6 @@ BENCHMARKS = {
     "LEXam": "lexam",
     "lexam.open_question": "lexam-open-question",
     "lexam.mcq_4_choices": "lexam-mcq-4-choices",
-    "Judge Scores on Open Questions": "lexam-open-question",
-    "Accuracy on Multiple-Choice Questions": "lexam-mcq-4-choices",
 }
 
 # Adapter `metric_name` / `metric_id` -> canonical metric id.
@@ -30,7 +28,6 @@ METRICS = {
     "Multiple-Choice Accuracy": "accuracy",
     "Accuracy on Multiple-Choice Questions": "accuracy",
     "Open Question Judge Score": "lexam-open-question-judge-score",
-    "Judge Scores on Open Questions": "lexam-open-question-judge-score",
     "lexam-open-question-judge-score": "lexam-open-question-judge-score",
 }
 
@@ -43,7 +40,7 @@ HARNESSES = {
 # Leaderboard model labels the adapter emits that needed a seed bridge.
 MODELS = {
     "DeepSeek-V3.2-chat": "deepseek-ai/DeepSeek-V3.2",
-    "DeepSeek-V3.2-reasoner": "deepseek-ai/DeepSeek-V3.2",
+    "DeepSeek-V3.2-reasoner": "deepseek/deepseek-v3-2-reasoning",
     "DeepSeek-V3.2-Exp": "deepseek/deepseek-v3.2-exp",
     "Llama-3.1-8B-it": "meta-llama/Llama-3.1-8B-Instruct",
     "Llama-3.3-70B-it": "meta-llama/Llama-3.3-70B-Instruct",
@@ -120,6 +117,27 @@ def test_sub_tasks_are_standalone(benchmarks_df, member):
     assert len(row) == 1, f"{member} missing from canonical_benchmarks"
     parent = row.iloc[0]["parent_benchmark_id"]
     assert parent is None or pd.isna(parent), f"{member} has parent_benchmark_id={parent!r}"
+
+
+# Leaderboard column headers are generic surface forms: any source could
+# publish a column called "Accuracy on Multiple-Choice Questions". They are
+# scoped to the lexam source_config (SKILL.md: ambiguous surface forms ->
+# scoped_aliases), so they resolve for that adapter and nowhere else. The
+# metric-side "Accuracy on Multiple-Choice Questions" stays global on the
+# generic `accuracy` canonical, which is the right answer for every source.
+SCOPED = {
+    ("benchmark", "Judge Scores on Open Questions"): "lexam-open-question",
+    ("benchmark", "Accuracy on Multiple-Choice Questions"): "lexam-mcq-4-choices",
+    ("metric", "Judge Scores on Open Questions"): "lexam-open-question-judge-score",
+}
+
+
+@pytest.mark.parametrize("entity_type,raw", sorted(SCOPED))
+def test_column_headers_resolve_only_for_the_lexam_source(resolver, entity_type, raw):
+    scoped = resolver.resolve(raw, entity_type=entity_type, source_config="lexam")
+    assert scoped.canonical_id == SCOPED[(entity_type, raw)]
+    unscoped = resolver.resolve(raw, entity_type=entity_type)
+    assert unscoped.canonical_id is None, f"{raw!r} must not be a global {entity_type} alias"
 
 
 def test_bare_hf_config_names_are_not_global_aliases(resolver):

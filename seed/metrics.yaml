@@ -3,10 +3,10 @@
 #
 # Bounds: `min_score` / `max_score` are the metric's range by definition.
 # A null bound means unbounded on that side (perplexity, error distances,
-# signed deltas). Do NOT write .inf: the API serialises an infinite float
-# as null anyway, and the every_eval_ever converters carry their own
-# "Infinity" wire form, so null is the one spelling every consumer reads
-# the same way. Each id must appear exactly once (tests/test_seed_unique_ids.py).
+# signed deltas). Do NOT write .inf: an infinite float is not JSON-compliant,
+# the read endpoints return plain dicts and raise on it, and the
+# every_eval_ever converters carry their own "Infinity" wire form, so null
+# is the one spelling every consumer reads the same way. Each id must appear exactly once (tests/test_seed_unique_ids.py).
 
 - id: accuracy
   display_name: Accuracy
@@ -207,7 +207,7 @@
   lower_is_better: null
   min_score: 0.0
   max_score: null
-  metadata: '{"unit": "characters", "note": "mean length of the evaluated model output, reported for length-bias context rather than as a quality score — hence lower_is_better: null. Distinct from calvin-avg-seq-length, which counts task sequences on a bounded 0-5 scale"}'
+  metadata: '{"unit": "characters", "note": "mean length of the evaluated model output, reported for length-bias context rather than as a quality score \u2014 hence lower_is_better: null. Distinct from calvin-avg-seq-length, which counts task sequences on a bounded 0-5 scale; distinct from average-word-count, which counts words rather than characters."}'
   review_status: draft
 
 - id: mean-score
@@ -4475,7 +4475,6 @@
 
 - id: quasi-exact-match
   display_name: Quasi-Exact Match
-  aliases: ["quasi_exact_match", "Quasi-exact match"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -4485,7 +4484,6 @@
 
 - id: prefix-exact-match
   display_name: Prefix Exact Match
-  aliases: ["prefix_exact_match", "Prefix exact match"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -4495,7 +4493,6 @@
 
 - id: quasi-prefix-exact-match
   display_name: Prefix Quasi-Exact Match
-  aliases: ["quasi_prefix_exact_match", "Prefix quasi-exact match"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -4535,7 +4532,7 @@
 
 - id: ifeval-strict-accuracy
   display_name: IFEval Strict Accuracy
-  aliases: ["ifeval_strict_accuracy", "IFEval Strict Acc"]
+  aliases: ["IFEval Strict Acc"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -4545,7 +4542,6 @@
 
 - id: brier-score
   display_name: Brier Score
-  aliases: ["brier_score"]
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
@@ -4580,7 +4576,6 @@
 
 - id: chrf
   display_name: chrF
-  aliases: ["chrf"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -4590,19 +4585,20 @@
 
 - id: ter
   display_name: TER
-  aliases: ["ter"]
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
   max_score: null
   metadata: '{"kind": "real", "confidence": "high", "source": "sacrebleu corpus_ter: Translation Edit Rate, the edits needed to turn the hypothesis into a reference divided by the reference length (Snover et al. 2006). Reached through lm-evaluation-harness api/metrics.py ter.", "provenance": "eee-converters", "note": "an error rate, so lower is better and there is no ceiling: a hypothesis can need more edits than the reference has words. lm-evaluation-harness registers this metric higher_is_better=True, contradicting its own aggregation docstring (\"Lower is better\") and the metric definition; see curation/UPSTREAM_DATA_ISSUES.md", "scale": "sacrebleu reports this x100; the bound here matches the wer and cer entries"}'
+  review_status: draft
 
 - id: lexam-open-question-judge-score
   display_name: 'LEXam Open Question Judge Score'
   aliases:
-  - 'LEXam Open Question Judge Score'
-  - 'Judge Scores on Open Questions'
   - 'Open Question Judge Score'
+  scoped_aliases:
+    lexam:
+      - 'Judge Scores on Open Questions'
   score_type: continuous
   lower_is_better: false
   min_score: 0.0

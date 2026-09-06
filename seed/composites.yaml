@@ -199,62 +199,53 @@ aixamine-adversarial-robustness:
   display: aiXamine Adversarial Robustness
   family_id: aixamine
   category: security
-  tags: '["security"]'
   configs:
     - aixamine_adversarial_robustness
 aixamine-code-security:
   display: aiXamine Code Security
   family_id: aixamine
   category: security
-  tags: '["security"]'
   configs:
     - aixamine_code_security
 aixamine-fairness-bias:
   display: aiXamine Fairness & Bias
   family_id: aixamine
   category: safety
-  tags: '["safety"]'
   configs:
     - aixamine_fairness_bias
 aixamine-hallucination:
   display: aiXamine Hallucination
   family_id: aixamine
   category: factuality
-  tags: '["factuality"]'
   configs:
     - aixamine_hallucination
 aixamine-jailbreak:
   display: aiXamine Jailbreak
   family_id: aixamine
   category: safety
-  tags: '["safety", "security"]'
   configs:
     - aixamine_jailbreak
 aixamine-model-data-privacy:
   display: aiXamine Model & Data Privacy
   family_id: aixamine
   category: security
-  tags: '["privacy", "security"]'
   configs:
     - aixamine_model_data_privacy
 aixamine-ood-robustness:
   display: aiXamine Out-of-Distribution Robustness
   family_id: aixamine
   category: security
-  tags: '["security"]'
   configs:
     - aixamine_ood_robustness
 aixamine-over-refusal:
   display: aiXamine Over-Refusal
   family_id: aixamine
   category: safety
-  tags: '["safety"]'
   configs:
     - aixamine_over_refusal
 aixamine-safety-alignment:
   display: aiXamine Safety & Alignment
   family_id: aixamine
   category: safety
-  tags: '["safety"]'
   configs:
     - aixamine_safety_alignment
