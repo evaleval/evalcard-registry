@@ -96,6 +96,7 @@
   version: null
   fork_url: null
   metadata: '{"repo": "https://github.com/tatsu-lab/alpaca_eval", "note": "the harness behind the alpacaeval-1-0 and alpacaeval-2-0 leaderboards; the import name is alpaca_eval, which the normalized matcher already reaches from this id"}'
+  review_status: draft
 
 - id: inspect-ai
   display_name: Inspect AI

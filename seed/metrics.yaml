@@ -1,5 +1,12 @@
 # Known canonical metrics — pre-populated on seed.
 # Source: derived from scanning all EEE configs (scripts/scan_eee_entities.py).
+#
+# Bounds: `min_score` / `max_score` are the metric's range by definition.
+# A null bound means unbounded on that side (perplexity, error distances,
+# signed deltas). Do NOT write .inf: the API serialises an infinite float
+# as null anyway, and the every_eval_ever converters carry their own
+# "Infinity" wire form, so null is the one spelling every consumer reads
+# the same way. Each id must appear exactly once (tests/test_seed_unique_ids.py).
 
 - id: accuracy
   display_name: Accuracy

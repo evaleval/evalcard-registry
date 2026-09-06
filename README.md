@@ -577,6 +577,7 @@ Resolving the same raw string twice returns the same canonical ID. Re-running wi
 | Model (on HF) | real HF repo id, HF-true casing | `meta-llama/Llama-3.1-8B-Instruct`, `Qwen/Qwen2.5-7B` |
 | Model (not on HF) | `{org_id}/{model-slug}` | `anthropic/claude-opus-4.5`, `openai/gpt-4o` |
 | Benchmark / Metric / Harness | lowercase slug | `math`, `lm-evaluation-harness` |
+| Metric bounds | `min_score` / `max_score`; **null = unbounded on that side** (never `.inf`) | perplexity `[1.0, null]` |
 | `eval_results` row ID | `sha256(evaluation_id:result_index)[:16]` | `a3f2b1c9d4e5f678` |
 
 Entity IDs use human-readable slugs (not hashes) because they appear in seed files, API responses, and are referenced during manual curation. Internal row IDs (like `eval_results.id`) use deterministic hashes for uniform length and collision resistance.
