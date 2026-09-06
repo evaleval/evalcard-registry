@@ -125,16 +125,6 @@
   metadata: '{"note": "win-rate aggregated across tasks/opponents by median; a different aggregation than mean-win-rate, kept separate like mean-win-rate"}'
   review_status: draft
 
-- id: length-controlled-win-rate
-  display_name: Length-Controlled Win Rate
-  aliases: ["length_controlled_winrate", "LC Win Rate"]
-  score_type: continuous
-  lower_is_better: false
-  min_score: 0.0
-  max_score: 100.0
-  metadata: '{"note": "win-rate debiased for output length via the logistic model in Dubois et al. 2024 (arXiv:2404.04475); the AlpacaEval 2.0 headline metric. Same [0,100] scale as win-rate, but a different estimator, so kept separate"}'
-  review_status: draft
-
 - id: discrete-win-rate
   display_name: Discrete Win Rate
   score_type: continuous
@@ -4417,12 +4407,12 @@
   review_status: reviewed
 - id: length-controlled-win-rate
   display_name: Length-Controlled Win Rate
-  aliases: ["length_controlled_winrate"]
+  aliases: ["length_controlled_winrate", "LC Win Rate"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
   max_score: 100.0
-  metadata: '{"note": "AlpacaEval 2.0 length-debiased win rate; a different computation than the raw win-rate canonical, kept separate"}'
+  metadata: '{"note": "AlpacaEval 2.0 length-debiased win rate; a different computation than the raw win-rate canonical, kept separate. Debiasing is the logistic model of Dubois et al. 2024 (arXiv:2404.04475); the estimator is bounded in [0,100] because the GLM prediction passes through a logistic before the x100 scaling"}'
   review_status: reviewed
 - id: pass-at-10
   display_name: Pass@10
