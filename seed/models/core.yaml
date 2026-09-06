@@ -13631,7 +13631,7 @@ entries:
   org_id: utter-project
   family: eurollm-9b
   architecture: null
-  params_billions: 9.2
+  params_billions: 9.15
   parents:
   - id: utter-project/EuroLLM-9B
     relationship: finetune
