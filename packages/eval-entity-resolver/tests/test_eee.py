@@ -45,6 +45,17 @@ class TestExtractMetric:
         assert extract_metric("Non-live simple AST accuracy") == "AST Accuracy"
         assert extract_metric("Live accuracy") == "Accuracy"
 
+    def test_class_averaged_f1_distinct_from_f1(self):
+        """Macro and micro F1 average over classes differently, and neither is F1.
+
+        The generic ``\\bf1\\b`` pattern matches inside both, so without their own
+        patterns the registry's macro-f1 and micro-f1 entries are unreachable from
+        an EEE metric name.
+        """
+        assert extract_metric("Macro F1") == "Macro F1"
+        assert extract_metric("Micro F1") == "Micro F1"
+        assert extract_metric("Tokenized F1") == "F1"
+
     def test_dot_notation_extracts_win_rate(self):
         assert extract_metric("fibble1_arena.win_rate") == "Win Rate"
 

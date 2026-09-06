@@ -96,4 +96,11 @@
   version: null
   fork_url: null
   metadata: '{"repo": "https://github.com/tatsu-lab/alpaca_eval", "note": "the harness behind the alpacaeval-1-0 and alpacaeval-2-0 leaderboards; the import name is alpaca_eval, which the normalized matcher already reaches from this id"}'
+
+- id: inspect-ai
+  display_name: Inspect AI
+  aliases: ["inspect_ai", "Inspect", "UK AISI Inspect"]
+  version: null
+  fork_url: null
+  metadata: '{"source": "UK AI Security Institute Inspect; the every_eval_ever converter publishes this slug as eval_library.name", "provenance": "eee-converters"}'
   review_status: draft

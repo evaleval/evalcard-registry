@@ -97,12 +97,12 @@
 
 - id: cot-correct
   display_name: COT Correct
-  aliases: ["COT correct", "Equivalent (CoT)"]
+  aliases: ["COT correct", "chain_of_thought_correctness"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
   max_score: 1.0
-  metadata: '{}'
+  metadata: '{"source": "HELM schema_capabilities.yaml chain_of_thought_correctness, display_name \"COT correct\": fraction of correct answers after chain of thought", "note": "this is HELM chain_of_thought_correctness and not math_equiv_chain_of_thought, whose display name \"Equivalent (CoT)\" was an alias here and now belongs to math-equivalent-chain-of-thought"}'
   review_status: reviewed
 
 - id: win-rate
@@ -601,6 +601,9 @@
   display_name: MC2Acc
   aliases:
   - MC2Acc
+  # The stat name lm-evaluation-harness reports it under, and the key the
+  # every_eval_ever lm_eval converter carries bounds for.
+  - mc2
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -2696,6 +2699,10 @@
   aliases:
   - 'Macro F1'
   - 'F1-macro'
+  # HELM's stat name for this quantity (schema_classic.yaml
+  # classification_macro_f1, display_name "Macro-F1"), which the
+  # every_eval_ever HELM converter publishes verbatim.
+  - classification_macro_f1
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -4322,7 +4329,7 @@
   lower_is_better: false
   min_score: 0.0
   max_score: 1.0
-  metadata: '{"note": "length/byte-normalized accuracy over multiple-choice continuations (lm-eval acc_norm); a different computation than plain accuracy, kept separate for the same reason macro-accuracy is"}'
+  metadata: '{"source": "lm-evaluation-harness api/task.py: argmax(loglikelihood / completion_len) == gold, where completion_len is each choice\u2019s character count", "note": "length/byte-normalized accuracy over multiple-choice continuations (lm-eval acc_norm); a different computation than plain accuracy, kept separate for the same reason macro-accuracy is"}'
   review_status: reviewed
 - id: lenient-accuracy
   display_name: Lenient Accuracy
@@ -4452,3 +4459,134 @@
   max_score: 1.0
   metadata: '{}'
   review_status: reviewed
+
+
+# Metrics the harness converters in evaleval/every_eval_ever publish that had no
+# entry here. Each is a distinct quantity from anything already listed rather
+# than a spelling of it, and the `source` in `metadata` is the upstream
+# definition it was read off.
+
+- id: quasi-exact-match
+  display_name: Quasi-Exact Match
+  aliases: ["quasi_exact_match", "Quasi-exact match"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml: \"Fraction of instances that the predicted output matches a correct reference up to light processing\" (lowercasing, punctuation, articles, whitespace)", "provenance": "eee-converters", "note": "distinct from exact-match, which compares the raw strings; HELM gives both the short_display_name \"EM\", so that string is not an alias of either"}'
+  review_status: draft
+
+- id: prefix-exact-match
+  display_name: Prefix Exact Match
+  aliases: ["prefix_exact_match", "Prefix exact match"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml: \"Fraction of instances that the predicted output matches the prefix of a correct reference exactly\"", "provenance": "eee-converters", "note": "systematically at least as high as exact-match on the same run, so the two must not share an id; HELM gives both prefix variants the short_display_name \"PEM\", so that string is not an alias of either"}'
+  review_status: draft
+
+- id: quasi-prefix-exact-match
+  display_name: Prefix Quasi-Exact Match
+  aliases: ["quasi_prefix_exact_match", "Prefix quasi-exact match"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml: prefix_exact_match applied after the quasi_exact_match normalization", "provenance": "eee-converters", "note": "the id follows the stat name HELM emits; HELM carries a TODO to rename that stat to prefix_quasi_exact_match, which would arrive here as an alias rather than a new entry"}'
+  review_status: draft
+
+- id: micro-f1
+  display_name: Micro F1
+  aliases: ["classification_micro_f1"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml: \"Population-level micro-averaged F1 score\"; computed by classification_metrics.ClassificationMetric as sklearn f1_score(average=\"micro\")", "provenance": "eee-converters", "note": "kept separate from f1 and macro-f1 for the same reason macro-f1 is separate from f1: a different averaging over classes"}'
+  review_status: draft
+
+- id: math-equivalent
+  display_name: Math Equivalent
+  aliases: ["math_equiv", "Equivalent"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml, display_name \"Equivalent\": \"Fraction of model outputs that are mathematically equivalent to the correct reference\"", "provenance": "eee-converters"}'
+  review_status: draft
+
+- id: math-equivalent-chain-of-thought
+  display_name: Math Equivalent (CoT)
+  aliases: ["math_equiv_chain_of_thought", "Equivalent (CoT)", "Equivalent (chain of thought)"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM: same as math_equiv under chain-of-thought prompting. display_name \"Equivalent (CoT)\" in schema_lite.yaml and \"Equivalent (chain of thought)\" in schema_classic.yaml", "provenance": "eee-converters", "note": "the alias \"Equivalent (CoT)\" moves here off cot-correct, which was carrying the display names of two different HELM metrics"}'
+  review_status: draft
+
+- id: ifeval-strict-accuracy
+  display_name: IFEval Strict Accuracy
+  aliases: ["ifeval_strict_accuracy", "IFEval Strict Acc"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_capabilities.yaml: \"Fraction of instructions in the instance that are correctly followed\"; ifeval_metrics.IFEvalMetric takes the mean of instruction.check_following over an instance", "provenance": "eee-converters"}'
+  review_status: draft
+
+- id: brier-score
+  display_name: Brier Score
+  aliases: ["brier_score"]
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: 2.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "lm-evaluation-harness api/task.py: mean(sum((softmax(loglikelihoods) - one_hot(gold)) ** 2))", "provenance": "eee-converters", "note": "the multi-class form sums the squared error over every class, so all the mass on one wrong class costs 2.0, not the 1.0 the two-class definition suggests"}'
+  review_status: draft
+
+- id: rouge-lsum
+  display_name: ROUGE-Lsum
+  aliases: ["rougeLsum"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "google-research rouge_score \"rougeLsum\", reached through HuggingFace evaluate by lm-evaluation-harness summarization tasks", "provenance": "eee-converters", "note": "ROUGE-L computed after splitting the text into sentences, so it differs from rouge-l on the same pair"}'
+  review_status: draft
+
+- id: truthfulqa-mc1
+  display_name: MC1Acc
+  aliases: ["mc1"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "dataset_specific", "confidence": "high", "source": "TruthfulQA MC1: whether the single highest-scored choice is the one true answer. Reported under the stat name mc1 by lm-evaluation-harness v0.3 and by lighteval; current lm-eval names the metric acc and carries the MC1/MC2 distinction in the task name.", "provenance": "eee-converters", "note": "mirrors the existing truthfulqa-mc2 entry"}'
+  review_status: draft
+
+# The two sacrebleu metrics. Their bounds follow the entries already here for
+# their siblings — chrf-plus-plus and bleu are [0, 1], wer and cer are
+# [0.0, null] — so #57 moves the whole family or none of it, rather than making
+# these two a third convention.
+
+- id: chrf
+  display_name: chrF
+  aliases: ["chrf"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "sacrebleu corpus_chrf: character n-gram F-score, beta=2, char_order=6, word_order=0. Reached through lm-evaluation-harness api/metrics.py chrf.", "provenance": "eee-converters", "note": "plain chrF, not chrf-plus-plus: sacrebleu becomes chrF++ only at word_order=2 and lm-eval calls corpus_chrf with the defaults, so the two are different numbers on the same run. lm-eval labels this one chrF++ in its docstring while computing chrF.", "scale": "sacrebleu reports this x100; the [0, 1] here matches the chrf-plus-plus and bleu entries, and evaleval/eval-card-registry#57 tracks the registry-wide choice"}'
+  review_status: draft
+
+- id: ter
+  display_name: TER
+  aliases: ["ter"]
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: null
+  metadata: '{"kind": "real", "confidence": "high", "source": "sacrebleu corpus_ter: Translation Edit Rate, the edits needed to turn the hypothesis into a reference divided by the reference length (Snover et al. 2006). Reached through lm-evaluation-harness api/metrics.py ter.", "provenance": "eee-converters", "note": "an error rate, so lower is better and there is no ceiling: a hypothesis can need more edits than the reference has words. lm-evaluation-harness registers this metric higher_is_better=True, contradicting its own aggregation docstring (\"Lower is better\") and the metric definition; see curation/UPSTREAM_DATA_ISSUES.md", "scale": "sacrebleu reports this x100; the bound here matches the wer and cer entries"}'
+  review_status: draft
