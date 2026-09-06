@@ -4520,36 +4520,6 @@
   metadata: '{"kind": "real", "confidence": "high", "source": "lm-evaluation-harness api/task.py: mean(sum((softmax(loglikelihoods) - one_hot(gold)) ** 2))", "provenance": "eee-converters", "note": "the multi-class form sums the squared error over every class, so all the mass on one wrong class costs 2.0, not the 1.0 the two-class definition suggests"}'
   review_status: draft
 
-- id: bits-per-byte
-  display_name: Bits Per Byte
-  aliases: ["bits_per_byte"]
-  score_type: continuous
-  lower_is_better: true
-  min_score: 0.0
-  max_score: null
-  metadata: '{"kind": "real", "confidence": "high", "source": "lm-evaluation-harness api/metrics.py bits_per_byte_fn: -weighted_mean(loglikelihood) / log(2)", "provenance": "eee-converters", "note": "bits, not a probability: no upper bound, and not comparable with a perplexity without knowing the tokenization"}'
-  review_status: draft
-
-- id: word-perplexity
-  display_name: Word Perplexity
-  aliases: ["word_perplexity"]
-  score_type: continuous
-  lower_is_better: true
-  min_score: 1.0
-  max_score: null
-  metadata: '{"kind": "real", "confidence": "high", "source": "lm-evaluation-harness api/metrics.py weighted_perplexity = exp(-weighted_mean(loglikelihood)), weighted by word count", "provenance": "eee-converters", "note": "separate from perplexity and byte-perplexity because the normalizer differs; the three are not comparable"}'
-  review_status: draft
-
-- id: byte-perplexity
-  display_name: Byte Perplexity
-  aliases: ["byte_perplexity"]
-  score_type: continuous
-  lower_is_better: true
-  min_score: 1.0
-  max_score: null
-  metadata: '{"kind": "real", "confidence": "high", "source": "lm-evaluation-harness api/metrics.py weighted_perplexity = exp(-weighted_mean(loglikelihood)), weighted by byte count", "provenance": "eee-converters", "note": "tokenizer-independent, unlike word-perplexity"}'
-  review_status: draft
-
 - id: rouge-lsum
   display_name: ROUGE-Lsum
   aliases: ["rougeLsum"]
