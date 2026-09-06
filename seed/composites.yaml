@@ -238,9 +238,9 @@ aixamine-model-data-privacy:
   configs:
     - aixamine_model_data_privacy
 aixamine-ood-robustness:
-  display: aiXamine OOD Robustness
+  display: aiXamine Out-of-Distribution Robustness
   family_id: aixamine
-  category: other
+  category: security
   tags: '["security"]'
   configs:
     - aixamine_ood_robustness
