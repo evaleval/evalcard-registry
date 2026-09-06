@@ -104,11 +104,23 @@ def test_every_entity_declares_a_review_status(name):
     assert missing == [], f"{name}: entries without a valid review_status: {missing}"
 
 
-def test_metric_bounds_are_finite_or_null():
-    """A null bound means unbounded on that side (seed/metrics.yaml header).
-    An infinite float is not JSON-compliant: the metric read endpoints return
-    plain dicts and raise on it, taking the whole listing down."""
+def test_metric_bounds_are_well_formed():
+    """`.inf` / `-.inf` mean unbounded by definition, null means not stated
+    (seed/metrics.yaml header). NaN is never a bound, +inf is never a lower
+    bound, -inf never an upper one, and a stated pair is ordered."""
+    import math
+
     entries = yaml.safe_load((SEED / "metrics.yaml").read_text()) or []
-    bad = [(e["id"], k, e.get(k)) for e in entries for k in ("min_score", "max_score")
-           if isinstance(e.get(k), float) and (e[k] != e[k] or e[k] in (float("inf"), float("-inf")))]
-    assert bad == [], f"non-finite metric bounds (use null for unbounded): {bad}"
+    bad = []
+    for e in entries:
+        lo, hi = e.get("min_score"), e.get("max_score")
+        for k, v in (("min_score", lo), ("max_score", hi)):
+            if isinstance(v, float) and math.isnan(v):
+                bad.append((e["id"], k, "NaN"))
+        if isinstance(lo, float) and lo == math.inf:
+            bad.append((e["id"], "min_score", "+inf"))
+        if isinstance(hi, float) and hi == -math.inf:
+            bad.append((e["id"], "max_score", "-inf"))
+        if isinstance(lo, (int, float)) and isinstance(hi, (int, float)) and lo > hi:
+            bad.append((e["id"], "bounds", f"{lo} > {hi}"))
+    assert bad == [], f"malformed metric bounds: {bad}"

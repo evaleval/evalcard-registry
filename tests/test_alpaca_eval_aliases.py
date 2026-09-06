@@ -93,8 +93,9 @@ def test_bare_alpacaeval_is_not_a_benchmark_alias(resolver):
         ("length-controlled-win-rate", False, 0.0, 100.0),
         ("discrete-win-rate", False, 0.0, 100.0),
         # `avg_length` is int(model_outputs["output"].str.len().mean()) —
-        # unbounded characters, and not a quality score in either direction.
-        ("average-response-length", None, 0.0, None),
+        # unbounded characters (`.inf` in the seed: unbounded by definition,
+        # not "not stated"), and not a quality score in either direction.
+        ("average-response-length", None, 0.0, float("inf")),
     ],
 )
 def test_metric_bounds(metrics_df, metric_id, lower_is_better, min_score, max_score):
@@ -108,4 +109,4 @@ def test_metric_bounds(metrics_df, metric_id, lower_is_better, min_score, max_sc
     if max_score is None:
         assert pd.isna(row["max_score"]), f"{metric_id}: max_score={row['max_score']!r}"
     else:
-        assert row["max_score"] == max_score
+        assert row["max_score"] == max_score, f"{metric_id}: max_score={row['max_score']!r}"

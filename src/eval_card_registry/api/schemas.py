@@ -1,5 +1,15 @@
 from typing import Any, Literal, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+# Metric bounds: an infinite float means "unbounded on that side by
+# definition" (seed `.inf`), null means "not stated". JSON has no infinity
+# literal, so the wire form is the string "Infinity" / "-Infinity" on both
+# input (pydantic parses it) and output (RegistryJSONResponse renders it).
+_BOUND_DESCRIPTION = (
+    "Metric bound. null = not stated; the string \"Infinity\" / \"-Infinity\" = "
+    "unbounded on that side by definition (JSON wire form of an infinite float)."
+)
 
 
 EntityType = Literal[
@@ -176,8 +186,8 @@ class MetricCreate(BaseModel):
     display_name: str
     score_type: Optional[str] = None
     lower_is_better: bool = False
-    min_score: Optional[float] = None
-    max_score: Optional[float] = None
+    min_score: Optional[float] = Field(default=None, description=_BOUND_DESCRIPTION)
+    max_score: Optional[float] = Field(default=None, description=_BOUND_DESCRIPTION)
     metadata: dict[str, Any] = {}
     review_status: str = "draft"
 
@@ -186,8 +196,8 @@ class MetricPatch(BaseModel):
     display_name: Optional[str] = None
     score_type: Optional[str] = None
     lower_is_better: Optional[bool] = None
-    min_score: Optional[float] = None
-    max_score: Optional[float] = None
+    min_score: Optional[float] = Field(default=None, description=_BOUND_DESCRIPTION)
+    max_score: Optional[float] = Field(default=None, description=_BOUND_DESCRIPTION)
     metadata: Optional[dict[str, Any]] = None
     review_status: Optional[str] = None
 
