@@ -91,9 +91,9 @@
   metadata: '{}'
   review_status: reviewed
 
-- id: inspect_ai
+- id: inspect-ai
   display_name: Inspect AI
-  aliases: ["Inspect", "inspect-ai", "UK AISI Inspect"]
+  aliases: ["inspect_ai", "Inspect", "UK AISI Inspect"]
   version: null
   fork_url: null
   metadata: '{"source": "UK AI Security Institute Inspect; the every_eval_ever converter publishes this slug as eval_library.name", "provenance": "eee-converters"}'
