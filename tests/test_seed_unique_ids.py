@@ -86,6 +86,9 @@ def test_mapping_seed_keys_are_unique(name):
 
 
 # Flat entity seeds whose entries carry review_status and (for metrics) bounds.
+# models/core.yaml is not gated: 15 of its entries declare review_status: null
+# on purpose (generator-owned rows awaiting a decision) and the generated
+# benchmark files use a third value, `auto`; both need their own rule.
 ENTITY_SEEDS = ("metrics.yaml", "benchmarks.yaml", "harnesses.yaml", "orgs.yaml")
 
 

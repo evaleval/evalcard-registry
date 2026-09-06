@@ -568,7 +568,6 @@ def seed(
         return list(by_id.values())
 
     def _check_benchmark_collisions(entries: list[dict]) -> None:
-        _norm = seed_collision_key
         """Seed-time guard: two benchmarks whose ids, display names, or
         global aliases collapse to the same normalized key (casefold +
         strip non-alphanumerics — stricter than collision_fold's
@@ -583,6 +582,7 @@ def seed(
         URL scheme (single-segment merged eval ids stay collision-free
         with two-segment per-source ids only while benchmark ids are
         slash-free)."""
+        _norm = seed_collision_key
         allow_path = seed_path / "benchmarks_distinct_allowlist.yaml"
         allowed: list[frozenset[str]] = []
         if allow_path.exists():
