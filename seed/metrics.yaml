@@ -43,7 +43,7 @@
 
 - id: f1
   display_name: F1 Score
-  aliases: ["F1", "Tokenized F1"]
+  aliases: ["F1", "Tokenized F1", "f1_score", "f1-score"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -1797,6 +1797,11 @@
   display_name: Matthews Correlation
   aliases:
   - Matthews Correlation
+  - Matthews correlation coefficient
+  - matthews-correlation-coefficient
+  - matthews_corrcoef
+  - mcc
+  - MCC
   score_type: continuous
   lower_is_better: false
   min_score: -1.0
@@ -2033,15 +2038,59 @@
   max_score: 1.0
   metadata: '{"kind": "dataset_specific", "confidence": "medium"}'
   review_status: draft
+# --- family: perplexity — exponentiated negative log-likelihood per unit — [1,∞) (bits-per-byte [0,∞)), lower better (4) ---
+# The four differ only in the unit the log-likelihood is averaged over
+# (scored target, whitespace word, UTF-8 byte, and bits per byte), and are
+# different numbers for the same model on the same text, so each is its
+# own canonical. Source: lm-evaluation-harness lm_eval/api/metrics.py
+# (perplexity, weighted_perplexity, bits_per_byte aggregations).
 - id: perplexity
   display_name: Perplexity
   aliases:
   - Perplexity
+  - ppl
   score_type: continuous
   lower_is_better: true
   min_score: 1.0
   max_score: null
-  metadata: '{"kind": "real", "confidence": "high"}'
+  metadata: '{"kind": "real", "confidence": "high", "family": "perplexity", "provenance": "lm-evaluation-harness", "source": "lm_eval/api/metrics.py perplexity aggregation: exp(-mean(loglikelihood)) over scored targets", "note": "the unqualified form: exp of the mean negative log-likelihood per scored target (lm-eval perplexity on LAMBADA scores the final word); generic reports also use it for per-token perplexity"}'
+  review_status: draft
+- id: word-perplexity
+  display_name: Word Perplexity
+  aliases:
+  - word_perplexity
+  - Word perplexity
+  - word-level perplexity
+  score_type: continuous
+  lower_is_better: true
+  min_score: 1.0
+  max_score: null
+  metadata: '{"kind": "real", "confidence": "high", "family": "perplexity", "provenance": "lm-evaluation-harness", "source": "lm_eval/api/metrics.py weighted_perplexity over word counts (wikitext)", "note": "exp of the negative log-likelihood averaged per whitespace word of the original page text; tokenizer-independent, not comparable to token perplexity"}'
+  review_status: draft
+- id: byte-perplexity
+  display_name: Byte Perplexity
+  aliases:
+  - byte_perplexity
+  - Byte perplexity
+  - byte-level perplexity
+  score_type: continuous
+  lower_is_better: true
+  min_score: 1.0
+  max_score: null
+  metadata: '{"kind": "real", "confidence": "high", "family": "perplexity", "provenance": "lm-evaluation-harness", "source": "lm_eval/api/metrics.py weighted_perplexity over byte counts (wikitext)", "note": "exp of the negative log-likelihood averaged per UTF-8 byte; equals 2 ** bits-per-byte"}'
+  review_status: draft
+- id: bits-per-byte
+  display_name: Bits per Byte
+  aliases:
+  - bits_per_byte
+  - Bits per byte
+  - BPB
+  - bpb
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: null
+  metadata: '{"kind": "real", "confidence": "high", "family": "perplexity", "provenance": "lm-evaluation-harness", "source": "lm_eval/api/metrics.py bits_per_byte: -weighted_mean(loglikelihood)/ln 2 over byte counts (wikitext)", "note": "negative log2-likelihood per UTF-8 byte; log2 of byte-perplexity"}'
   review_status: draft
 - id: ndcg-at-10
   display_name: NDCG@10
@@ -4249,7 +4298,7 @@
 # --- lm_eval submission emits that had no canonical home.
 - id: normalized-accuracy
   display_name: Normalized Accuracy
-  aliases: ["acc_norm", "normalized_accuracy", "Normalized accuracy"]
+  aliases: ["acc_norm", "normalized_accuracy", "Normalized accuracy", "acc-norm", "accuracy_norm", "accuracy-norm", "length-normalized accuracy", "Length-normalized accuracy"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
