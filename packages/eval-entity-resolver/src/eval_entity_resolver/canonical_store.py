@@ -464,6 +464,9 @@ class CanonicalStore:
         - model:     {"granularity": variant|group|family}
         - benchmark: {"level": composite|family|benchmark|slice,
                       "matched_subset": str|None}
+        - harness:   {} here — the RESOLVER (not the store) fills
+                     {harness_version_stripped, bare_name, bare_tier} on a
+                     match it reached by stripping a trailing version token.
         - others:    {}
         """
         if entity_type == "model":

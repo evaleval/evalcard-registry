@@ -352,7 +352,12 @@ entity type) + `ancestry` + a typed `resolution_detail`:
     surface form whenever it differs from the canonical id by more than case
     (e.g. `"MATH Level 5"` → `math-level-5`), so a plain `level="benchmark"`
     match can still carry one.
-  - `composite` / `family` / `metric` / `harness` / `org`: `{}` (reserved).
+  - `harness`: `{}` on an alias-tier match, and
+    `{ "harness_version_stripped": str, "bare_name": str, "bare_tier": "exact"|"normalized" }`
+    when the resolver reached the match by stripping a trailing version token
+    off the raw value (`lm_eval 0.4.12` → `lm-evaluation-harness`, reported as
+    a `normalized` match at 0.95). The keys appear ONLY on such a stripped hit.
+  - `composite` / `family` / `metric` / `org`: `{}` (reserved).
 
 **Response shape & consistency.** The ten top-level fields above are ALWAYS
 present on every `/resolve` and `/resolve/batch` response, for every entity type
@@ -360,8 +365,9 @@ and even on a no-match — fields with nothing to report come back explicitly
 `null` (`canonical_id`, `resolution_source`, `review_status`) rather than being
 omitted, and `ancestry` is always a list. The one field whose *inner* keys vary
 is `resolution_detail`: it is a polymorphic payload selected by `entity_type`
-(model and benchmark carry different keys; metric/harness/org/composite/family
-are `{}`), and it is `{}` on a **no-match** (no match → no detail). So treat
+(model and benchmark carry different keys; metric/org/composite/family are
+`{}`, and harness carries keys only for a stripped-version hit), and it is `{}`
+on a **no-match** (no match → no detail). So treat
 `resolution_detail` as "present-but-possibly-empty" and key into it by
 `entity_type` + a successful match. Example no-match:
 

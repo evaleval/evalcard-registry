@@ -360,8 +360,8 @@
   review_status: reviewed
 
 # --- image/geometry benchmark metrics (added for the paperswithcode adapter) ---
-# Bounds from the metrics' defining papers. Unbounded ranges use max_score: null
-# (PSNR/AbsRel/Chamfer are half-open). review_status: draft -> maintainer should
+# Bounds from the metrics' defining papers. Half-open ranges use max_score: .inf
+# (PSNR/AbsRel/Chamfer are unbounded above by definition). review_status: draft -> maintainer should
 # confirm the bounds before promoting to reviewed.
 - id: psnr
   display_name: PSNR
@@ -3582,7 +3582,7 @@
   metadata: '{"kind": "real", "confidence": "medium", "family": "bitrate", "source": "bit-rate (bpsp/bpp); [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
-# --- family: bd — Bjontegaard-delta rate (signed %), unbounded — null bounds, lower better (4) ---
+# --- family: bd — Bjontegaard-delta rate (signed %), unbounded — (-.inf, .inf) bounds, lower better (4) ---
 - id: bd-rate
   display_name: 'BD-Rate'
   aliases:
@@ -4609,6 +4609,26 @@
   min_score: 0.0
   max_score: 100.0
   metadata: '{"kind": "real", "confidence": "high", "family": "bespoke-paper", "source": "0-100 scale. Each judge assigns a per-question correctness score on 0.0-1.0 in 0.1 increments against a reference answer; the ensemble takes the pointwise MINIMUM across three judges (GPT-4o, Qwen3-32B, DeepSeek-V3), and the reported figure is the mean over questions times 100. Same 0-100 convention as the sibling *-judge-score entries.", "provenance": "lexam-adapter", "paper": "https://arxiv.org/abs/2505.12864", "judge_prompt": "https://github.com/LEXam-Benchmark/LEXam/blob/main/customized_judge_async.py"}'
+  review_status: draft
+
+- id: mean-task-time
+  display_name: Mean Task Time
+  aliases: []
+  scoped_aliases:
+    cocoabench:
+      # CocoaBench reports average wall-clock runtime per task in SECONDS,
+      # both as the structured metric id tail and as the metric name. Scoped
+      # so `_segment_is_metric` drops the tail of
+      # `cocoabench.overall.avg_time_seconds` (otherwise the benchmark path
+      # mints a metric-named slice of `cocoabench`), and so the structured
+      # metric path answers it instead of the catch-all `score`.
+      - 'avg_time_seconds'
+      - 'Average time per task'
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: .inf
+  metadata: '{"kind": "real", "confidence": "high", "unit": "seconds", "source": "mean wall-clock time to complete one task, in seconds. Distinct from mean-response-time, which is per LLM invocation and reported in milliseconds.", "provenance": "cocoabench-adapter"}'
   review_status: draft
 
 # --- Polistemics (arXiv:2607.25953) ---
