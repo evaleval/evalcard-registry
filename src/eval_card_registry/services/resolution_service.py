@@ -387,6 +387,17 @@ class ResolutionService:
 
         strategy_used = result.strategy if result.canonical_id else "auto_draft"
 
+        # A harness match the resolver reached by stripping a trailing version
+        # token carries its provenance in `resolution_detail`; keep it on the
+        # `auto` alias row so the minted per-version rows stay auditable.
+        detail = result.resolution_detail or {}
+        strip_note = None
+        if isinstance(detail, dict) and detail.get("harness_version_stripped"):
+            strip_note = (
+                f"harness version stripped: {detail['harness_version_stripped']} "
+                f"(bare {detail.get('bare_name')}, {detail.get('bare_tier')} tier)"
+            )
+
         # Write alias (buffered during sync for performance)
         alias_data = {
             "raw_value": raw_value,
@@ -397,7 +408,7 @@ class ResolutionService:
             "status": alias_status,
             "strategy": strategy_used,
             "confidence": result.confidence,
-            "notes": None,
+            "notes": strip_note,
         }
         if rerun:
             existing_row = queries.get_alias(self.store, raw_value, entity_type, source_config)
@@ -420,15 +431,20 @@ class ResolutionService:
                     },
                 )
             elif existing_alias_id:
+                updates = {
+                    "canonical_id": canonical_id,
+                    "status": alias_status,
+                    "strategy": strategy_used,
+                    "confidence": result.confidence,
+                }
+                if strip_note is not None:
+                    # The rerun path must carry the marker too, or the alias
+                    # row stops being the audit trail after the first rerun.
+                    updates["notes"] = strip_note
                 queries.update_alias(
                     self.store,
                     alias_id=existing_alias_id,
-                    updates={
-                        "canonical_id": canonical_id,
-                        "status": alias_status,
-                        "strategy": strategy_used,
-                        "confidence": result.confidence,
-                    },
+                    updates=updates,
                 )
             else:
                 try:

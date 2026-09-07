@@ -38,6 +38,36 @@ _NORMALIZED_CONFIDENCE = 0.95
 # (`if`, `mc`, `nq`) a bare segment would otherwise collide with.
 _MIN_BENCHMARK_SEGMENT_LEN = 3
 
+# A trailing version token on a harness string (`lm_eval 0.4.12`,
+# `inspect_ai inspect_ai:0.3.80.dev25+g91a50728.d20250331`). Whitespace-
+# separated, optional `v` prefix, digits with at least one dot, an optional
+# PEP 440 pre/post/dev tail and an optional local segment. A `<lib>:` prefix on
+# the token is matched here and validated against the name in
+# `_strip_harness_version`.
+_HARNESS_VERSION_TAIL_RE = re.compile(
+    r"^(?P<name>.*\S)\s+"                                   # 'name', then whitespace
+    r"(?:(?P<lib>[A-Za-z][\w.\-]*):)?"                       # optional '<lib>:' prefix
+    r"v?(?P<version>\d+(?:\.\d+)+"                          # optional v, digits with >= 1 dot
+    r"(?:[.\-]?(?:dev|rc|a|b|alpha|beta|post|final)\d*)?"    # PEP 440-style pre/post/dev tail
+    r"(?:\+[\w.]+)?)$",                                      # optional local segment
+    re.IGNORECASE,
+)
+
+
+def _strip_harness_version(raw_value: str) -> Optional[str]:
+    """Return the bare harness name when `raw_value` ends in a whitespace-separated
+    version token, else None. A `<lib>:` prefix on the token is accepted only when
+    `<lib>` normalizes equal to the name (`inspect_ai inspect_ai:0.3.75`), so
+    `foo bar:1.0` is not stripped."""
+    if not raw_value:
+        return None
+    m = _HARNESS_VERSION_TAIL_RE.match(raw_value.strip())
+    if not m:
+        return None
+    if m.group("lib") and normalize(m.group("lib")) != normalize(m.group("name")):
+        return None
+    return m.group("name")
+
 
 @dataclass
 class StructuredBenchmark:
@@ -205,7 +235,60 @@ class Resolver:
                 result.inference_platform = inferred_platform
             return result
 
-        # 6. No match
+        # 6. No match — for a harness in resolve mode, one last additive try
+        # with a trailing version token stripped (see the helper).
+        return self._no_match_or_harness_retry(
+            raw_value, entity_type, source_config, mode
+        )
+
+    def _no_match_or_harness_retry(
+        self,
+        raw_value: str,
+        entity_type: str,
+        source_config: Optional[str],
+        mode: str,
+    ) -> ResolutionResult:
+        """The final `no_match` exit, with one additive step for harnesses:
+        a versioned harness string (`lm_eval 0.4.12`, `polistemics 1.1.0`)
+        whose bare name IS a registered harness resolves to it.
+
+        Fires only when every existing strategy missed, only for
+        `entity_type == "harness"`, and only in `mode="resolve"` — exact mode
+        stops at the alias tiers by contract (README "Exact mode"), and the
+        strip is an inference step however mild. A per-version alias therefore
+        always wins first, which is how the strip stays overridable.
+
+        The hit is reported as a `normalized` match at 0.95 (dropping a
+        version token is a normalization of the raw value, not an exact hit)
+        and carries `resolution_detail = {"harness_version_stripped", "bare_name",
+        "bare_tier"}` so the provenance is auditable. A harness hit that did
+        NOT strip a version keeps the documented empty `resolution_detail`.
+        """
+        if (
+            entity_type == "harness"
+            and mode != "exact"
+            and _NORMALIZED_CONFIDENCE >= self.config.threshold
+        ):
+            bare = _strip_harness_version(raw_value)
+            if bare is not None:
+                tier = "exact"
+                canonical = exact_match(bare, "harness", source_config, self.store)
+                if canonical is None:
+                    tier = "normalized"
+                    canonical = normalized_match(
+                        bare, "harness", self.store, source_config
+                    )
+                if canonical is not None:
+                    result = self._enrich(
+                        raw_value, "harness", source_config,
+                        canonical, "normalized", _NORMALIZED_CONFIDENCE,
+                    )
+                    result.resolution_detail = {
+                        "harness_version_stripped": raw_value.strip()[len(bare):].strip(),
+                        "bare_name": bare,
+                        "bare_tier": tier,
+                    }
+                    return result
         return ResolutionResult(
             raw_value=raw_value,
             entity_type=entity_type,
@@ -240,10 +323,11 @@ class Resolver:
         catch-all hit is treated as "no disclosure" so a field name never
         outranks prose that names the real metric.
 
-        Returns the canonical id when exactly one distinct non-catch-all
-        metric is disclosed; None otherwise (no hits, only catch-all
-        hits, or conflicting hits) — callers fall back to their existing
-        description/name path unchanged.
+        Returns the canonical id when the whole id is a registered
+        (non-catch-all) metric alias, else when exactly one distinct
+        non-catch-all metric is disclosed by the segments; None otherwise
+        (no hits, only catch-all hits, or conflicting hits) — callers fall
+        back to their existing description/name path unchanged.
         """
         if not raw_id or not isinstance(raw_id, str):
             return None
@@ -253,6 +337,16 @@ class Resolver:
         segments = [s for s in re.split(r"[./]", raw_id) if s]
         if len(segments) < 2:
             return None
+        # The whole namespaced id may itself be a registered metric id/alias
+        # (every_eval_ever mints `metric_id = f"{harness}.{reported}"` for
+        # unregistered metrics, and a registry entry with that id auto-aliases
+        # it). An exact alias on the whole string is the most specific evidence
+        # there is, so it outranks any single-segment reading. Catch-all
+        # canonicals still defer. Exact only: `normalize()` deletes dots, so a
+        # normalized whole-id lookup could equate distinct ids.
+        whole = exact_match(raw_id, "metric", source_config, self.store)
+        if whole is not None and whole not in catch_all_ids:
+            return whole
         hits: list[str] = []
         for segment in segments[1:]:  # segments[0] is the adapter namespace
             canonical = exact_match(
@@ -297,30 +391,87 @@ class Resolver:
         winner are the subset, kept on `benchmark_raw` so the producer's
         slice machinery still sees them.
 
+        A leading segment naming the row's own `source_config` is dropped
+        first; if nothing then resolves it is KEPT and probed like any other
+        segment, so a datastore folder that is itself a registered benchmark is
+        the fallback identity for the dotted names under it. A subset of an
+        unregistered benchmark under a registered aggregator is therefore
+        reported as that aggregator with the subset kept, never as the subset
+        alone: `vals_ai.programbench.strict` (source_config `vals-ai`) is
+        `("vals-ai", "vals ai programbench strict", "programbench strict")`.
+        The same reading already applied when the leading segment did NOT name
+        the folder (`artificial_analysis.unknownbench`). The consequence for
+        seed review: registering a datastore folder name as a benchmark makes
+        it the fallback identity for every dotted name under that folder the
+        registry does not otherwise know, with one slice per child — today
+        `benchpress` (238 distinct names) and `paperswithcode` (64) sit in that
+        position and stay unresolved only because neither is a benchmark alias.
+
+        `subset` is only meaningful when the winning canonical is the segment
+        hit itself; when the joined form won, the trailing segments belong to
+        the identity and `subset` is informational.
+
         Returns None when no segment resolves, so callers fall back to
         `clean_eval_name` unchanged.
         """
         segments = prepare_eval_name_segments(raw_name)
         if segments is None:
             return None
+        probe_segments = segments
+        dropped_source = False
         if (
             len(segments) > 1
             and source_config
             and normalize(segments[0]) == normalize(source_config)
         ):
-            segments = segments[1:]      # leading source namespace, not a benchmark
+            # leading source namespace: dropped first, kept as the fallback
+            # identity when nothing else resolves (see docstring)
+            probe_segments = segments[1:]
+            dropped_source = True
+        match = self._probe_benchmark_segments(probe_segments, source_config)
+        if match is None and dropped_source:
+            # Nothing under the folder resolved — retry with the folder-named
+            # segment kept, probed through the alias tiers only.
+            match = self._probe_benchmark_segments(
+                segments, source_config, alias_tiers_only_at=0
+            )
+        return match
+
+    def _probe_benchmark_segments(
+        self,
+        segments: list[str],
+        source_config: Optional[str],
+        *,
+        alias_tiers_only_at: int = -1,
+    ) -> Optional["StructuredBenchmark"]:
+        """Drop a trailing metric segment, probe every segment against the
+        benchmark vocabulary and spell the winner (see
+        `resolve_structured_benchmark`). The segment at `alias_tiers_only_at`
+        is probed with the exact/normalized alias tiers ONLY, never fuzzy:
+        that index is the folder-named segment of the fallback retry, which
+        today is not probed at all, and the fuzzy tier's benchmark stem
+        matching (run-configuration token stripping) would be a new inference
+        surface on it. `-1` (the default) means every segment takes the full
+        chain, which is the unchanged first pass."""
         if len(segments) > 1 and self._segment_is_metric(segments[-1], source_config):
             segments = segments[:-1]
 
         hits: list[tuple[int, str]] = []
         for i, segment in enumerate(segments):
-            probe = (
-                self.resolve(segment, "benchmark", source_config, check_hf=False)
-                if len(segment) >= _MIN_BENCHMARK_SEGMENT_LEN
-                else None
-            )
-            if probe is not None and probe.canonical_id is not None:
-                hits.append((i, probe.canonical_id))
+            canonical_id: Optional[str] = None
+            if len(segment) >= _MIN_BENCHMARK_SEGMENT_LEN:
+                if i == alias_tiers_only_at:
+                    canonical_id = exact_match(
+                        segment, "benchmark", source_config, self.store
+                    ) or normalized_match(
+                        segment, "benchmark", self.store, source_config
+                    )
+                else:
+                    canonical_id = self.resolve(
+                        segment, "benchmark", source_config, check_hf=False
+                    ).canonical_id
+            if canonical_id is not None:
+                hits.append((i, canonical_id))
                 continue
             nxt = segments[i + 1] if i + 1 < len(segments) else None
             if not self._is_namespace_segment(segment, nxt, source_config):

@@ -621,6 +621,108 @@ class TestResolveStructuredMetricId:
         assert r.resolve_structured_metric_id(None) is None
         assert r.resolve_structured_metric_id("  ") is None
 
+    # --- change B: the whole namespaced id may itself be a registered alias.
+    # A separate store from `_resolver()` so the existing cases above keep
+    # asserting the segment-only behaviour they were written for.
+
+    def _whole_id_resolver(self):
+        return Resolver(
+            _store_with_aliases(
+                ("elo", "metric", "elo", None, "confirmed"),
+                ("accuracy", "metric", "accuracy", None, "confirmed"),
+                ("Accuracy", "metric", "accuracy", None, "confirmed"),
+                ("score", "metric", "score", None, "confirmed"),
+                ("polistemics.adherence", "metric", "polistemics.adherence", None, "confirmed"),
+                ("adapter.rubric.score", "metric", "score", None, "confirmed"),
+                ("adapter.elo.rank", "metric", "custom-elo-rank", None, "confirmed"),
+                ("adapter.elo.accuracy", "metric", "custom-elo-acc", None, "confirmed"),
+                ("cvebench.mean", "metric", "cvebench.mean", None, "confirmed"),
+                ("vendor.metric", "metric", "vendor-metric", "vendorcfg", "confirmed"),
+                ("Avg/Accuracy", "metric", "avg-accuracy", None, "confirmed"),
+                ("STFT-Dist.", "metric", "stft-dist", None, "confirmed"),
+            )
+        )
+
+    def test_whole_id_alias_recovers_after_segments_miss(self):
+        assert (
+            self._whole_id_resolver().resolve_structured_metric_id(
+                "polistemics.adherence", catch_all_ids=self.CATCH_ALL
+            )
+            == "polistemics.adherence"
+        )
+
+    def test_whole_id_alias_is_config_scoped(self):
+        r = self._whole_id_resolver()
+        assert (
+            r.resolve_structured_metric_id(
+                "vendor.metric", source_config="vendorcfg", catch_all_ids=self.CATCH_ALL
+            )
+            == "vendor-metric"
+        )
+        assert r.resolve_structured_metric_id("vendor.metric", catch_all_ids=self.CATCH_ALL) is None
+
+    def test_whole_id_catch_all_alias_still_defers(self):
+        assert (
+            self._whole_id_resolver().resolve_structured_metric_id(
+                "adapter.rubric.score", catch_all_ids=self.CATCH_ALL
+            )
+            is None
+        )
+
+    def test_whole_id_alias_outranks_segment_hit(self):
+        r = self._whole_id_resolver()
+        # `Avg/Accuracy` is a real registry alias; the segment reading says
+        # `accuracy`, the alias's own declared canonical says `avg-accuracy`.
+        assert (
+            r.resolve_structured_metric_id("Avg/Accuracy", catch_all_ids=self.CATCH_ALL)
+            == "avg-accuracy"
+        )
+        assert (
+            r.resolve_structured_metric_id("adapter.elo.rank", catch_all_ids=self.CATCH_ALL)
+            == "custom-elo-rank"
+        )
+
+    def test_single_segment_id_never_routes_through(self):
+        # `STFT-Dist.` splits to ONE segment, so the precheck rejects it before
+        # the whole-id lookup can see it — the precheck contract is unchanged.
+        assert (
+            self._whole_id_resolver().resolve_structured_metric_id(
+                "STFT-Dist.", catch_all_ids=self.CATCH_ALL
+            )
+            is None
+        )
+
+    def test_whole_id_alias_resolves_conflicting_segments(self):
+        assert (
+            self._whole_id_resolver().resolve_structured_metric_id(
+                "adapter.elo.accuracy", catch_all_ids=self.CATCH_ALL
+            )
+            == "custom-elo-acc"
+        )
+
+    def test_whole_id_placeholder_alias_is_returned(self):
+        assert (
+            self._whole_id_resolver().resolve_structured_metric_id(
+                "cvebench.mean", catch_all_ids=self.CATCH_ALL
+            )
+            == "cvebench.mean"
+        )
+
+    def test_whole_id_lookup_is_exact_not_normalized(self):
+        r = self._whole_id_resolver()
+        assert (
+            r.resolve_structured_metric_id(
+                "Polistemics.Adherence", catch_all_ids=self.CATCH_ALL
+            )
+            is None
+        )
+        assert (
+            r.resolve_structured_metric_id(
+                "polistemics/adherence", catch_all_ids=self.CATCH_ALL
+            )
+            is None
+        )
+
 
 class TestResolveStructuredBenchmark:
     """Segment-wise, registry-driven resolution for dotted evaluation_names."""
@@ -666,7 +768,10 @@ class TestResolveStructuredBenchmark:
         assert match.canonical_id == "mmlu-pro"
         assert match.subset == "math"
 
-    def test_leading_source_namespace_is_not_the_benchmark(self):
+    def test_leading_source_namespace_loses_to_a_deeper_hit(self):
+        """The folder is dropped when a deeper segment resolves; when nothing
+        deeper resolves it is the fallback identity (see
+        TestStructuredBenchmarkFolderFallback)."""
         match = self._resolver().resolve_structured_benchmark(
             "vals_ai.mmlu_pro.biology", source_config="vals-ai"
         )
@@ -702,3 +807,279 @@ class TestResolveStructuredBenchmark:
         r = self._resolver()
         assert r.resolve_structured_benchmark(None) is None
         assert r.resolve_structured_benchmark("  ") is None
+
+
+class TestStructuredBenchmarkFolderFallback:
+    """The additive retry: when the source_config-named leading segment was
+    dropped and NOTHING else in the name resolved, the folder segment is kept
+    and probed (alias tiers only), so a datastore folder that is itself a
+    registered benchmark is the fallback identity for the names under it."""
+
+    def _resolver(self):
+        return Resolver(
+            _store_with_aliases(
+                ("polistemics", "benchmark", "polistemics", None, "confirmed"),
+                ("cocoabench", "benchmark", "cocoabench", None, "confirmed"),
+                ("lexam", "benchmark", "lexam", None, "confirmed"),
+                ("lexam open question", "benchmark", "lexam-open-question", None, "confirmed"),
+                ("llm_stats", "benchmark", "llm-stats", None, "confirmed"),
+                ("mcp-atlas", "benchmark", "mcp-atlas", None, "confirmed"),
+                ("vals_ai", "benchmark", "vals-ai", None, "confirmed"),
+            )
+        )
+
+    def test_folder_benchmark_recovers_when_nothing_else_resolves(self):
+        match = self._resolver().resolve_structured_benchmark(
+            "polistemics.nl_tk2025.en.faithfulness", source_config="polistemics"
+        )
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == (
+            "polistemics",
+            "polistemics nl tk2025 en faithfulness",
+            "nl tk2025 en faithfulness",
+        )
+
+    def test_folder_fallback_still_drops_trailing_metric(self):
+        match = self._resolver().resolve_structured_benchmark(
+            "cocoabench.overall.accuracy_percent", source_config="cocoabench"
+        )
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == (
+            "cocoabench",
+            "cocoabench",
+            None,
+        )
+
+    def test_folder_fallback_prefers_known_joined_form(self):
+        # The joined surface form is the registered alias, so it outranks the
+        # folder segment hit. `subset` is informational here (the trailing
+        # segments are part of the identity), so it is not asserted.
+        match = self._resolver().resolve_structured_benchmark(
+            "lexam.open_question", source_config="lexam"
+        )
+        assert match.canonical_id == "lexam-open-question"
+        assert match.benchmark_raw == "lexam open question"
+
+    def test_folder_fallback_keeps_unregistered_child_as_subset(self):
+        match = self._resolver().resolve_structured_benchmark(
+            "llm_stats.zzz-bench", source_config="llm-stats"
+        )
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == (
+            "llm-stats",
+            "llm stats zzz-bench",
+            "zzz-bench",
+        )
+
+    def test_folder_fallback_never_runs_when_dropped_pass_hits(self):
+        match = self._resolver().resolve_structured_benchmark(
+            "llm_stats.mcp-atlas", source_config="llm-stats"
+        )
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == (
+            "mcp-atlas",
+            "mcp-atlas",
+            None,
+        )
+
+    def test_collapsed_duplicate_folder_name_recovers(self):
+        match = self._resolver().resolve_structured_benchmark(
+            "polistemics.polistemics.baseline", source_config="polistemics"
+        )
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == (
+            "polistemics",
+            "polistemics baseline",
+            "baseline",
+        )
+
+    def test_folder_fallback_needs_a_registered_folder_benchmark(self):
+        assert (
+            self._resolver().resolve_structured_benchmark(
+                "nope.nothing.overall", source_config="nope"
+            )
+            is None
+        )
+
+    def test_no_drop_means_first_pass_answers(self):
+        # Segment 0 does not name the folder, so nothing is dropped and the
+        # retry never runs — today's path already reports the folder-shaped
+        # leading segment as the identity.
+        match = self._resolver().resolve_structured_benchmark(
+            "polistemics.nl_tk2025.en.faithfulness", source_config="other-folder"
+        )
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == (
+            "polistemics",
+            "polistemics nl tk2025 en faithfulness",
+            "nl tk2025 en faithfulness",
+        )
+
+    def test_unregistered_child_under_registered_folder_reports_folder(self):
+        # The documented contract change: a subset of an UNREGISTERED benchmark
+        # under a registered aggregator is reported as that aggregator with the
+        # subset kept, never as the subset alone.
+        match = self._resolver().resolve_structured_benchmark(
+            "vals_ai.programbench.strict", source_config="vals-ai"
+        )
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == (
+            "vals-ai",
+            "vals ai programbench strict",
+            "programbench strict",
+        )
+
+    def test_no_source_config_is_not_an_a_case(self):
+        # Without a source_config nothing is dropped, so this is today's
+        # answer via the first pass — unchanged by the retry.
+        match = self._resolver().resolve_structured_benchmark(
+            "vals_ai.programbench.strict", source_config=None
+        )
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == (
+            "vals-ai",
+            "vals ai programbench strict",
+            "programbench strict",
+        )
+
+    def test_unregistered_folder_without_source_config_is_none(self):
+        assert (
+            self._resolver().resolve_structured_benchmark("nope.child.strict") is None
+        )
+
+    def test_folder_fallback_never_uses_fuzzy_on_the_folder(self):
+        # `zzz-bench-cot` fuzzy-stems to `zzz-bench` (a run-configuration
+        # token), so the folder WOULD match if the retry probed it through the
+        # full chain. The retry uses the alias tiers only, so it does not.
+        store = _store_with_aliases(
+            ("zzz-bench", "benchmark", "zzz-bench", None, "confirmed")
+        )
+        resolver = Resolver(store)
+        assert resolver.resolve("zzz-bench-cot", "benchmark").canonical_id == "zzz-bench"
+        assert (
+            resolver.resolve_structured_benchmark(
+                "zzz-bench-cot.child.strict", source_config="zzz-bench-cot"
+            )
+            is None
+        )
+
+
+class TestHarnessVersionFallback:
+    """Change C: a versioned harness string whose bare name IS a registered
+    harness resolves to it, in resolve mode only, after every other strategy
+    missed."""
+
+    def _resolver(self, config=None):
+        return Resolver(
+            _store_with_aliases(
+                ("lm_eval", "harness", "lm-evaluation-harness", None, "confirmed"),
+                ("lm_eval 0.4.11.dev0", "harness", "lm-evaluation-harness", None, "confirmed"),
+                ("helm", "harness", "helm", None, "confirmed"),
+                ("Inspect AI", "harness", "inspect-ai", None, "confirmed"),
+                ("mmlu", "benchmark", "mmlu", None, "confirmed"),
+                ("myharness", "harness", "scoped-harness", "cfg", "confirmed"),
+            ),
+            config=config,
+        )
+
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("lm_eval 0.4.12", "lm_eval"),
+            ("lm_eval v0.4.12", "lm_eval"),
+            ("lm_eval 0.4.12-rc1", "lm_eval"),
+            ("lm_eval 0.4.12.post1", "lm_eval"),
+            ("lm_eval 0.4.11.dev0", "lm_eval"),
+            ("inspect_ai 0.3.100 ", "inspect_ai"),
+            ("inspect_ai inspect_ai:0.3.75", "inspect_ai"),
+            ("inspect_ai inspect_ai:0.3.80.dev25+g91a50728.d20250331", "inspect_ai"),
+            ("helm unknown", None),
+            ("swe-bench v2", None),
+            ("BFCL v4", None),
+            ("kaggle kernel 4", None),
+            ("terminal-bench-2.0", None),
+            ("1.2.3", None),
+            ("helm", None),
+            ("inspect_ai foo:0.3.75", None),
+            ("inspect_ai inspect_ai:0.3.202,inference_scaling_paper:0.1.0", None),
+        ],
+    )
+    def test_strip_helper(self, raw, expected):
+        from eval_entity_resolver.resolver import _strip_harness_version
+
+        assert _strip_harness_version(raw) == expected
+
+    def test_versioned_name_resolves_via_bare_exact_tier(self):
+        result = self._resolver().resolve("lm_eval 0.4.12", "harness")
+        assert result.canonical_id == "lm-evaluation-harness"
+        assert result.strategy == "normalized"
+        assert result.confidence == 0.95
+        assert result.raw_value == "lm_eval 0.4.12"
+        assert result.resolution_detail == {
+            "harness_version_stripped": "0.4.12",
+            "bare_name": "lm_eval",
+            "bare_tier": "exact",
+        }
+
+    def test_versioned_name_resolves_via_bare_normalized_tier(self):
+        result = self._resolver().resolve("inspect_ai inspect_ai:0.3.75", "harness")
+        assert (result.canonical_id, result.strategy, result.confidence) == (
+            "inspect-ai",
+            "normalized",
+            0.95,
+        )
+        assert result.resolution_detail["bare_tier"] == "normalized"
+        assert result.resolution_detail["harness_version_stripped"] == "inspect_ai:0.3.75"
+
+    @pytest.mark.parametrize(
+        "raw", ["lm_eval v0.4.12", "lm_eval 0.4.12-rc1", "lm_eval 0.4.12.post1"]
+    )
+    def test_prerelease_tails(self, raw):
+        assert self._resolver().resolve(raw, "harness").canonical_id == "lm-evaluation-harness"
+
+    def test_existing_versioned_alias_still_wins_first(self):
+        result = self._resolver().resolve("lm_eval 0.4.11.dev0", "harness")
+        assert (result.canonical_id, result.strategy, result.confidence) == (
+            "lm-evaluation-harness",
+            "exact",
+            1.0,
+        )
+        assert "harness_version_stripped" not in (result.resolution_detail or {})
+
+    @pytest.mark.parametrize(
+        "raw", ["helm unknown", "swe-bench v2", "BFCL v4", "terminal-bench-2.0", "1.2.3"]
+    )
+    def test_non_version_tails_stay_no_match(self, raw):
+        result = self._resolver().resolve(raw, "harness")
+        assert result.canonical_id is None
+        assert result.strategy == "no_match"
+        assert result.confidence == 0.0
+
+    def test_unregistered_bare_name_stays_no_match(self):
+        assert self._resolver().resolve("polistemics 1.1.0", "harness").canonical_id is None
+
+    def test_exact_mode_stays_no_match(self):
+        resolver = self._resolver()
+        assert resolver.resolve("helm 1.2.3", "harness", mode="exact").canonical_id is None
+        # control: the alias tiers still answer in exact mode
+        assert resolver.resolve("helm", "harness", mode="exact").canonical_id == "helm"
+        # the gate lives in the helper itself, not in the control flow
+        direct = resolver._no_match_or_harness_retry("helm 1.2.3", "harness", None, "exact")
+        assert direct.canonical_id is None and direct.strategy == "no_match"
+
+    def test_harness_detail_is_empty_without_strip(self):
+        # No canonical store attached here, so the enriched detail is unset;
+        # the contract is that a non-stripped harness hit carries NO strip keys
+        # (the HTTP projection turns that into `{}` — tests/test_d1_hierarchy.py).
+        result = self._resolver().resolve("helm", "harness")
+        assert (result.resolution_detail or {}) == {}
+
+    def test_other_entity_types_untouched(self):
+        resolver = self._resolver()
+        assert resolver.resolve("mmlu 1.0", "benchmark").canonical_id is None
+        assert resolver.resolve("helm 1.2.3", "metric").canonical_id is None
+
+    def test_threshold_gates_retry(self):
+        resolver = self._resolver(config=ResolverConfig(threshold=0.99))
+        assert resolver.resolve("inspect_ai 0.3.100", "harness").canonical_id is None
+        assert resolver.resolve("helm 1.2.3", "harness").canonical_id is None
+
+    def test_source_config_scoping_respected(self):
+        resolver = self._resolver()
+        assert (
+            resolver.resolve("myharness 1.0", "harness", "cfg").canonical_id
+            == "scoped-harness"
+        )
+        assert resolver.resolve("myharness 1.0", "harness").canonical_id is None

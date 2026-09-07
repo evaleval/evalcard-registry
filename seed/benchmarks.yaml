@@ -26073,6 +26073,12 @@
   scoped_aliases:
     lexam:
       - "Judge Scores on Open Questions"
+      # The datastore's own slice spelling. Scoped (not global) so the
+      # structured benchmark path resolves `lexam.open_question` on its FIRST
+      # pass, and so `slice_promotion` can promote the lexam bucket — without
+      # it the pipeline overrides the sub-task back to the `lexam` parent and
+      # mints a slice per sub-task.
+      - "open_question"
   description: LEXam sub-task — long-form open-ended law exam questions (test split, n=2,541), graded by a pointwise-minimum ensemble of three LLM judges with human expert validation.
   dataset_repo: LEXam-Benchmark/LEXam
   parent_benchmark_id: null
@@ -26086,6 +26092,8 @@
   scoped_aliases:
     lexam:
       - "Accuracy on Multiple-Choice Questions"
+      # See lexam-open-question: the datastore's slice spelling, scoped.
+      - "mcq_4_choices"
   description: LEXam sub-task — multiple-choice law exam questions with four options (n=1,655). This is the configuration the public leaderboard reports; the 8/16/32-choice configs are separate.
   dataset_repo: LEXam-Benchmark/LEXam
   parent_benchmark_id: null

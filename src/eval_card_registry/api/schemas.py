@@ -119,7 +119,10 @@ class ResolveResponse(BaseModel):
     #   benchmark -> e.g. [{family}, {composite}]
     ancestry: list[AncestryEntry] = []
     # Typed resolution detail, schema selected by `entity_type`. `{}` for
-    # composite / family / metric / harness / org (reserved).
+    # composite / family / metric / org (reserved). `harness` carries
+    # `{harness_version_stripped, bare_name, bare_tier}` — additively, and
+    # ONLY when the resolver reached the match by stripping a trailing
+    # version token (`lm_eval 0.4.12`); `{}` otherwise.
     resolution_detail: dict[str, Any] = {}
 
 
