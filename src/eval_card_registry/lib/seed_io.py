@@ -29,6 +29,18 @@ WEAK_SCALAR_FIELDS = (
 )
 
 
+def safe_load_yaml(text: str):
+    """Parse trusted seed YAML with libyaml acceleration when available.
+
+    ``yaml.safe_load`` always selects the Python ``SafeLoader``. These source
+    files are read dozens of times by the refresh regression suite, so using
+    the API-equivalent ``CSafeLoader`` cuts minutes from cron verification.
+    Environments without libyaml retain the same safe Python fallback.
+    """
+    loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+    return yaml.load(text, Loader=loader)
+
+
 def resolve_oracle_path(name: str = "hf_model_id_resolution.json") -> Path:
     """Absolute path to a frozen curation input (the HF oracle JSON by default).
 
@@ -50,7 +62,7 @@ def load_entries_from_yaml(path: Path) -> list[dict]:
     generated sources without a per-path existence check."""
     if not path.exists():
         return []
-    raw = yaml.safe_load(path.read_text()) or []
+    raw = safe_load_yaml(path.read_text()) or []
     return (raw.get("entries") if isinstance(raw, dict) else raw) or []
 
 
@@ -63,5 +75,5 @@ def build_hf_to_dev_from_orgs_yaml(orgs_path: Path) -> dict[str, str]:
     org map."""
     from eval_entity_resolver.fold import build_curated_org_map
 
-    orgs = yaml.safe_load(orgs_path.read_text()) or [] if orgs_path.exists() else []
+    orgs = safe_load_yaml(orgs_path.read_text()) or [] if orgs_path.exists() else []
     return build_curated_org_map(orgs)

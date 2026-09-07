@@ -48,7 +48,9 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Include headroom for the correlated seed/publish child to queue behind
+    # another live publisher and then consume its own 60-minute budget.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
 
@@ -84,6 +86,22 @@ jobs:
       - name: Reconcile orgs (union of all model sources)
         run: uv run python scripts/refresh_from_modelsdev.py --reconcile-orgs
 
+      # The full and catalog partitions cross-reference one another. Give that
+      # bounded two-partition system one convergence pass against TODAY'S
+      # cached snapshot, then run it once more and require byte-identical
+      # outputs. This catches live-only path dependence without relying on the
+      # pinned regression corpus or committing an intermediate pass.
+      - name: Converge and verify live refresh fixpoint
+        run: |
+          uv run python scripts/refresh_from_modelsdev.py --no-fetch
+          uv run python scripts/refresh_from_modelsdev.py --catalog --no-fetch
+          uv run python scripts/refresh_from_modelsdev.py --reconcile-orgs
+          sha256sum "$GENERATED_PATH" "$CATALOG_PATH" "$ORGS_GEN_PATH" $EXTRA_ORG_SYNC_PATHS > /tmp/models-refresh.sha256
+          uv run python scripts/refresh_from_modelsdev.py --no-fetch
+          uv run python scripts/refresh_from_modelsdev.py --catalog --no-fetch
+          uv run python scripts/refresh_from_modelsdev.py --reconcile-orgs
+          sha256sum --check /tmp/models-refresh.sha256
+
       # SMOKE tier (must pass — RED on failure). The regenerated YAML must parse,
       # the seed loader must run, and the gate suite must COLLECT cleanly (catches
       # import / path / module-load breakage). A failure here is pipeline breakage,
@@ -110,12 +128,10 @@ jobs:
       # step failed: a smoke-step failure is infra; this step failing means
       # "today's upstream would regress data, so nothing was committed." A failure
       # here halts the job before Detect, so the commit/deploy steps never run.
-      # The dedup/confluence suite is part of the gate: the committed
-      # models_dev sources must stay a FIXPOINT of the pipeline under the
-      # PINNED snapshot (tests/fixtures/modelsdev_api.snapshot.json). A live
-      # pull that diverges from the pinned baseline therefore ABORTS here
-      # instead of committing files that red the suite on main — until the
-      # snapshot-refreeze-in-commit design lands, the cron fails closed.
+      # The dedup suite exercises a PINNED snapshot as a deterministic
+      # regression corpus. It does not compare that historical input with
+      # today's live output: refreshes are guarded by the source-shape and
+      # identity invariants, while fixture refreshes remain deliberate reviews.
       - name: Regression gate (blocks commit on data regression)
         run: LOCAL_MODE=true uv run pytest tests/test_gate_invariants.py tests/test_refresh_modelsdev_dedup.py -q
 
@@ -138,43 +154,67 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$GENERATED_PATH" "$CATALOG_PATH" "$ORGS_GEN_PATH" $EXTRA_ORG_SYNC_PATHS
           git commit -m "chore(seed): refresh models.dev source + catalog ($(date -u +%Y-%m-%d))"
-          # If main moved while we were running, rebase rather than fail.
-          git pull --rebase origin "${GITHUB_REF_NAME}"
+          # Never rebase after the gate: that would push a tree we did not test.
+          # A concurrent main update makes this push fail and the next cron (or
+          # a manual rerun) regenerates against the new head.
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
-      # GITHUB_TOKEN-authored pushes do NOT trigger downstream workflows
-      # by GH security policy. Dispatch seed.yml explicitly so the
-      # refresh actually deploys to the HF Dataset repo + restarts the
-      # Space. A failed dispatch here means a COMMITTED refresh is left
-      # undeployed — a real, silent inconsistency — so fail RED with a
-      # manual-fallback hint rather than swallowing it.
-      - name: Trigger seed deployment
-        if: steps.diff.outputs.changed == 'true'
+      # Retry a previous publish failure even when today's generated files are
+      # unchanged; the sticky issue is the durable recovery signal.
+      - name: Decide whether registry publish is needed
+        id: deploy
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh workflow run seed.yml --ref "${GITHUB_REF_NAME}" || {
-            echo "::error::seed.yml dispatch failed after a committed refresh — deploy manually: gh workflow run seed.yml --ref ${GITHUB_REF_NAME}"
+          stalled=$(gh issue list --label refresh-models-stalled --state open --json number --jq 'length' 2>/dev/null || echo 0)
+          if [ "${{ steps.diff.outputs.changed }}" = "true" ] || [ "$stalled" != "0" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A dispatch acknowledgement is not a deployment. Correlate this refresh
+      # with one seed run and wait for its final conclusion; only then may the
+      # stall beacon be cleared.
+      - name: Publish and wait for verified completion
+        if: steps.deploy.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          correlation="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          title="Seed + publish (${correlation})"
+          gh workflow run seed.yml --ref main -f source_run_id="${correlation}"
+          run_id=""
+          for attempt in $(seq 1 30); do
+            run_id=$(gh run list --workflow seed.yml --event workflow_dispatch --branch main --limit 50 --json databaseId,displayTitle --jq ".[] | select(.displayTitle == \"$title\") | .databaseId" | head -n 1)
+            [ -n "$run_id" ] && break
+            sleep 5
+          done
+          if [ -z "$run_id" ]; then
+            echo "::error::could not locate the correlated seed.yml run"
             exit 1
-          }
+          fi
+          gh run watch "$run_id" --exit-status
 
       # Stall beacon — ONE sticky tracking issue (deduplicated by the
-      # `refresh-models-stalled` label), never a new issue per run. ANY failed
-      # step (infra / data-regression / commit / dispatch) opens-or-comments the
-      # single issue. It is CLEARED only by a run that actually committed AND
-      # dispatched a deploy (success() && changed) — NOT by a no-op green day, so
-      # a committed-but-undeployed refresh (dispatch failed) is not silently
-      # auto-closed before the deploy is re-attempted. All `gh` calls are
+      # `refresh-models-stalled` label), never a new issue per run. ANY failure
+      # or cancellation (infra / data-regression / timeout / commit / downstream publish) opens-or-comments the
+      # single issue. It is CLEARED only after a correlated downstream publish
+      # finishes successfully — never on dispatch acknowledgement alone. A
+      # committed-but-unpublished refresh is retried while the issue remains.
+      # All `gh` calls are
       # best-effort (|| true) so a beacon-side API hiccup can't flip the run's
       # real status.
       - name: Raise/refresh stall beacon
-        if: failure()
+        if: failure() || cancelled()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           label="refresh-models-stalled"
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          body="refresh-models run FAILED on $(date -u +%F) — cause may be infra, a data-regression gate, or a deploy dispatch; inspect the run: ${run_url}. Auto-closes after a run that commits + deploys."
+          outcome="${{ job.status }}"
+          body="refresh-models run ended ${outcome} on $(date -u +%F) — cause may be infra, timeout/cancellation, a data-regression gate, commit, or downstream publish; inspect the run: ${run_url}. Auto-closes only after a correlated publish succeeds."
           gh label create "$label" --color FBCA04 --description "refresh-models cron is failing/blocked" 2>/dev/null || true
           num=$(gh issue list --label "$label" --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)
           if [ -n "$num" ]; then
@@ -184,12 +224,12 @@ jobs:
           fi
 
       - name: Clear stall beacon
-        if: success() && steps.diff.outputs.changed == 'true'
+        if: success() && steps.deploy.outputs.needed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           label="refresh-models-stalled"
           for num in $(gh issue list --label "$label" --state open --json number --jq '.[].number' 2>/dev/null || true); do
-            gh issue comment "$num" --body "✅ Resolved on $(date -u +%F) — a refresh committed + deployed. Closing." || true
+            gh issue comment "$num" --body "✅ Resolved on $(date -u +%F) — the correlated seed + flat-data publish completed successfully. Closing." || true
             gh issue close "$num" || true
           done

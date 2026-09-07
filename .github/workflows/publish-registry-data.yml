@@ -1,7 +1,10 @@
 name: Publish registry data
 
-# Publishes the registry's canonical parquets to evaleval/entity-registry-data
-# via scripts/publish_registry_data.py. Two triggers:
+# Publishes the registry's flat canonical parquets to
+# evaleval/entity-registry-data via scripts/publish_registry_data.py. These are
+# the versioned producer/backend inputs. The legacy live Space reads a separate
+# partitioned layout; migrating that larger historical universe is deliberately
+# outside this workflow and this workflow must not claim to deploy/restart it.
 #
 #   - On PRs that touch seed YAML or registry code: --dry-run + tests.
 #     Catches schema breakage / parse failures before merge without
@@ -18,39 +21,53 @@ on:
     branches: [main]
     paths:
       - "seed/**"
-      - "src/eval_card_registry/cli.py"
-      - "src/eval_card_registry/store/**"
+      - "src/**"
       - "packages/eval-entity-resolver/**"
-      - "scripts/publish_registry_data.py"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
       - ".github/workflows/publish-registry-data.yml"
   push:
     branches: [main]
     paths:
       - "seed/**"
-      - "src/eval_card_registry/cli.py"
-      - "src/eval_card_registry/store/**"
-      - "scripts/publish_registry_data.py"
+      - "src/**"
+      - "packages/eval-entity-resolver/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
       - ".github/workflows/publish-registry-data.yml"
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
-# Cancel in-flight runs when a newer commit lands. The push and
-# pull_request triggers share a group so a PR's dry-run doesn't run
-# concurrently with the merge's real publish.
+# Keep each PR's verification separate from the single live-publish lane, so
+# merging a PR cannot cancel its dry-run. New commits may cancel an obsolete
+# dry-run for that PR; push/manual live publishes share one non-overlapping
+# production lane (GitHub may supersede an older pending run with the newest
+# checkout, which is safe because every live job below is restricted to main).
 concurrency:
-  group: publish-registry-data
-  cancel-in-progress: true
+  group: ${{ github.event_name == 'pull_request' && format('publish-registry-data-pr-{0}', github.event.pull_request.number) || github.ref == 'refs/heads/main' && 'registry-data-publish' || format('publish-registry-data-nonproduction-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  reject-nonproduction-manual-run:
+    if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject non-production ref
+        run: |
+          echo "::error::registry data publishing is production-only and must run from refs/heads/main"
+          exit 1
+
   dry-run:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    # Seeds, runs the full gate suite, then a dry-run publish (which re-seeds).
+    # Seeds, runs the full gate suite, then inspects those exact fixtures.
     # The seed grew with the carry-forward/enrichment work, so 15 min now
     # clips the trailing publish step after the gates have already passed.
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6
         with:
@@ -77,15 +94,20 @@ jobs:
         run: LOCAL_MODE=true uv run pytest
 
       - name: Publish registry data (--dry-run)
-        run: uv run python scripts/publish_registry_data.py --dry-run
+        run: uv run python scripts/publish_registry_data.py --dry-run --skip-seed
 
       - name: Surface manifest in CI log
         run: cat fixtures/manifest.json
 
   publish:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Main must prove the exact checkout is seedable and regression-clean before
+    # it can mutate the remote dataset. The full suite can take 15–25 minutes on
+    # hosted runners, so leave bounded headroom for setup and upload.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
         with:
@@ -97,21 +119,16 @@ jobs:
       - name: Sync dependencies
         run: uv sync
 
+      - name: Seed fixtures from the checkout being published
+        run: LOCAL_MODE=true uv run eval-card-registry seed --local
+
+      - name: Run pytest before publishing
+        run: LOCAL_MODE=true uv run pytest
+
       - name: Publish registry data
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: uv run python scripts/publish_registry_data.py
-
-      # The deployed Space caches the parquet at boot. Restart so
-      # /api/v1/resolve picks up the new revision. Non-fatal — if the
-      # Space restart fails the data is already pushed and will load
-      # on the next natural restart.
-      - name: Restart entity-registry Space
-        if: success()
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          uv run python -c "
-          from huggingface_hub import HfApi
-          HfApi().restart_space('evaleval/entity-registry')
-          " || echo "::warning::Space restart failed; will reload on next manual restart"
+        # Do not seed again here: the exact fixture bytes above passed pytest.
+        run: >-
+          uv run python scripts/publish_registry_data.py --skip-seed
+          --require-origin-main-head

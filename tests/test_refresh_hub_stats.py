@@ -175,6 +175,58 @@ def test_build_entry_propagates_resolvable_parents(mod):
     assert e["lineage_origin_model_org_id"] == "meta"
 
 
+@pytest.mark.parametrize(
+    ("parent_id", "canonical_org"),
+    [
+        ("CohereLabs/Command-R", "cohere"),
+        ("ibm-granite/Granite-3B", "ibm"),
+    ],
+)
+def test_build_entry_uses_complete_org_map_for_lineage_origin(
+    mod, parent_id, canonical_org
+):
+    """The bulk refresh uses the shared HF-prefix map, not only aliases that
+    happen to be representable in the lightweight YAML normalizer. This keeps
+    lineage org ids stable across the hub-stats and models.dev crons.
+    """
+    child_id = "example/Derived-Model"
+    aliases = {
+        mod._normalize(child_id): child_id,
+        mod._normalize(parent_id): parent_id,
+    }
+    row = {
+        "id": child_id,
+        "author": "example",
+        "createdAt": datetime(2026, 1, 1),
+        "tags": [],
+        "cardData": None,
+        "safetensors": None,
+        "baseModels": {
+            "relation": "finetune",
+            "models": [{"id": parent_id}],
+        },
+        "library_name": None,
+        "pipeline_tag": None,
+        "downloadsAllTime": None,
+        "likes": None,
+    }
+    hf_to_dev = {
+        "example": "example",
+        "coherelabs": "cohere",
+        "ibm-granite": "ibm",
+    }
+
+    entry = mod.build_entry(
+        row,
+        org_alias_map={},
+        aliases_to_canonical=aliases,
+        hf_to_dev=hf_to_dev,
+    )
+
+    assert entry is not None
+    assert entry["lineage_origin_model_org_id"] == canonical_org
+
+
 def test_build_entry_drops_unresolvable_parents(mod):
     """`baseModels` pointing at an HF id we don't track yields no
     parents — dangling edges would break the lineage graph."""

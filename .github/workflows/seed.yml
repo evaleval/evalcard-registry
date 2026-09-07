@@ -4,30 +4,46 @@ name: Seed + publish
 # refresh-hub-stats.yml) trigger after they commit a regenerated source.
 # GITHUB_TOKEN-authored pushes do NOT fire push-triggered workflows, so the
 # refresh jobs `gh workflow run seed.yml` explicitly; this workflow re-seeds,
-# validates the merge, and hands off to publish-registry-data.yml (the real
-# HF Dataset publish + Space restart). Kept thin — the heavy lifting lives in
-# the seed CLI and the publish script.
+# validates the merge, and publishes the tested flat fixtures to the HF
+# Dataset. The legacy registry Space uses a separate partitioned layout and is
+# intentionally not restarted here (that migration requires its own review).
 #
 # Also runnable on demand (workflow_dispatch) to re-seed + publish after a
 # manual seed edit.
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Refresh workflow run waiting for this release (optional)"
+        required: false
+        type: string
+
+run-name: Seed + publish (${{ inputs.source_run_id || 'manual' }})
 
 permissions:
   contents: read
-  # Dispatching publish-registry-data.yml requires actions:write.
-  actions: write
 
 concurrency:
-  group: seed
+  # Shared with every other live flat-data publisher on main. An invalid
+  # off-main manual dispatch gets its own lane so it cannot displace a valid
+  # pending production release before the guard step rejects it.
+  group: ${{ github.ref == 'refs/heads/main' && 'registry-data-publish' || format('seed-nonproduction-{0}', github.run_id) }}
   cancel-in-progress: false
 
 jobs:
   seed:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The complete offline suite has exceeded 15 minutes on hosted runners;
+    # keep the release gate bounded without cancelling it mid-verification.
+    timeout-minutes: 60
     steps:
+      - name: Guard production ref
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::seed + publish is production-only and must run from refs/heads/main"
+          exit 1
+
       - uses: actions/checkout@v6
 
       - name: Install uv
@@ -45,14 +61,11 @@ jobs:
       - name: Run pytest
         run: LOCAL_MODE=true uv run pytest -q
 
-      # Hand off to the real publish (flat-layout HF Dataset upload + live
-      # Space restart). A failed dispatch here leaves a freshly-seeded warehouse
-      # unpublished — fail RED with a manual-fallback hint rather than swallow it.
-      - name: Trigger publish-registry-data
+      # Publish the exact fixtures just tested. A second seed here would change
+      # generated ids/timestamps and invalidate the evidence from pytest.
+      - name: Publish tested registry data
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh workflow run publish-registry-data.yml --ref "${GITHUB_REF_NAME}" || {
-            echo "::error::publish-registry-data dispatch failed after seeding — publish manually: gh workflow run publish-registry-data.yml --ref ${GITHUB_REF_NAME}"
-            exit 1
-          }
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run python scripts/publish_registry_data.py --skip-seed
+          --require-origin-main-head

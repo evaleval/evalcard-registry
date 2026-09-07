@@ -76,6 +76,29 @@ class TestHubStatsIndexPriority:
         # repo, identical to what the generator produces.
         assert a2c[_hsnorm("deepseek-ai/DeepSeek-V3.1")] == "deepseek-ai/DeepSeek-V3.1"
 
+    @pytest.mark.parametrize(
+        ("hf_org", "canonical_org"),
+        [("CohereLabs", "cohere"), ("ibm-granite", "ibm")],
+    )
+    def test_live_hub_stats_index_uses_complete_curated_org_map(
+        self, hf_org, canonical_org
+    ):
+        """Runtime enrichment and the bulk cron must share one org map."""
+        import pandas as pd
+
+        store = _fresh_store()
+        store._tables["canonical_orgs"] = pd.DataFrame(
+            [
+                {"id": "cohere", "hf_org": "CohereForAI"},
+                {"id": "ibm", "hf_org": "ibm"},
+            ]
+        )
+        svc = ResolutionService(store)
+
+        _, org_map = svc._build_hub_stats_indices()
+
+        assert org_map[hf_org.lower()] == canonical_org
+
 
 class TestResolutionService:
     def test_resolves_known_entity(self):
