@@ -22,9 +22,9 @@ dedicated, testable publish path:
 Usage:
     uv run python scripts/publish_registry_data.py [--dry-run]
 
-`--dry-run` runs steps 1–3 (writes manifest locally, no push) and
-exits 0 if everything is consistent. CI uses this on PRs to catch
-schema breakage before merge.
+`--dry-run` writes the manifest and skips the push. ``--skip-seed`` is for CI
+after it has already seeded and tested ``fixtures/``; it guarantees the bytes
+validated by the workflow are the bytes offered to the Hub.
 
 Backend consumers (eval_card_backend) should assert
 `manifest.json.schema_version`'s major matches their expected major.
@@ -89,6 +89,38 @@ def _git_sha() -> Optional[str]:
         return out.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
+
+
+def _origin_main_sha() -> Optional[str]:
+    """Current ``origin/main`` SHA, read from the remote immediately before
+    production mutation. ``None`` means the freshness check could not be made
+    and must fail closed when requested by CI."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-remote", "--exit-code", "origin", "refs/heads/main"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return out.stdout.split()[0] if out.stdout.split() else None
+    except (subprocess.CalledProcessError, FileNotFoundError, IndexError):
+        return None
+
+
+def _assert_checkout_is_current_main() -> None:
+    """Fail rather than let a delayed older workflow roll dataset HEAD back."""
+    local_sha = _git_sha()
+    remote_sha = _origin_main_sha()
+    if not local_sha or not remote_sha:
+        raise RuntimeError(
+            "cannot verify checkout freshness against origin/main; refusing publish"
+        )
+    if local_sha != remote_sha:
+        raise RuntimeError(
+            f"stale checkout {local_sha} is not current origin/main {remote_sha}; "
+            "refusing publish"
+        )
 
 
 def _content_hash(fixtures_dir: Path) -> str:
@@ -263,13 +295,26 @@ def main() -> int:
         action="store_true",
         help="Run seed + write manifest locally; skip HF push. Used in PR CI.",
     )
+    parser.add_argument(
+        "--skip-seed",
+        action="store_true",
+        help="Use already materialized fixtures (CI only; avoids re-seeding after tests).",
+    )
+    parser.add_argument(
+        "--require-origin-main-head",
+        action="store_true",
+        help="Fail unless checkout HEAD is the current remote main (production CI).",
+    )
     args = parser.parse_args()
 
-    print("[1/4] Running seed CLI…", file=sys.stderr)
-    rc = _run_seed()
-    if rc != 0:
-        print(f"seed failed with exit code {rc}", file=sys.stderr)
-        return rc
+    if args.skip_seed:
+        print("[1/4] Using pre-seeded fixtures…", file=sys.stderr)
+    else:
+        print("[1/4] Running seed CLI…", file=sys.stderr)
+        rc = _run_seed()
+        if rc != 0:
+            print(f"seed failed with exit code {rc}", file=sys.stderr)
+            return rc
 
     if not FIXTURES_DIR.is_dir():
         print(f"fixtures/ missing after seed; expected {FIXTURES_DIR}", file=sys.stderr)
@@ -308,16 +353,28 @@ def main() -> int:
         print("[4/4] --dry-run: skipping HF upload.", file=sys.stderr)
         return 0
 
+    if args.require_origin_main_head:
+        print("[4/4] Verifying checkout is current origin/main…", file=sys.stderr)
+        try:
+            _assert_checkout_is_current_main()
+        except RuntimeError as exc:
+            print(f"  [error] {exc}", file=sys.stderr)
+            return 1
+
     print("[4/4] Checking remote manifest for idempotency…", file=sys.stderr)
     remote = _read_remote_manifest()
+    if remote and remote.get("seed_git_sha") == manifest.get("seed_git_sha"):
+        print("  remote seed_git_sha matches local; skipping push (no-op).",
+              file=sys.stderr)
+        return 0
     if remote and remote.get("content_hash") == content_hash:
-        print(f"  remote content_hash matches local; skipping push (no-op).",
+        print("  remote content_hash matches local; skipping push (no-op).",
               file=sys.stderr)
         return 0
 
     print(f"  pushing to {HF_DATASET_REPO}…", file=sys.stderr)
     _with_backoff(lambda: _push(FIXTURES_DIR, manifest), what="upload to HF")
-    print(f"  done.", file=sys.stderr)
+    print("  done.", file=sys.stderr)
     return 0
 
 

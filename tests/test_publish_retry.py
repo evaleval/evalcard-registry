@@ -75,3 +75,23 @@ def test_exhausts_attempts_then_raises(mod):
         mod._with_backoff(fn, what="test", attempts=4, base_seconds=15.0, sleep=waits.append)
     assert calls["n"] == 4  # all attempts used
     assert waits == [15.0, 30.0, 60.0]  # slept before attempts 2, 3, 4; not after the last
+
+
+def test_production_freshness_guard_accepts_current_main(mod, monkeypatch):
+    monkeypatch.setattr(mod, "_git_sha", lambda: "abc123")
+    monkeypatch.setattr(mod, "_origin_main_sha", lambda: "abc123")
+
+    mod._assert_checkout_is_current_main()
+
+
+def test_production_freshness_guard_rejects_stale_or_unverifiable(
+    mod, monkeypatch
+):
+    monkeypatch.setattr(mod, "_git_sha", lambda: "old123")
+    monkeypatch.setattr(mod, "_origin_main_sha", lambda: "new456")
+    with pytest.raises(RuntimeError, match="stale checkout"):
+        mod._assert_checkout_is_current_main()
+
+    monkeypatch.setattr(mod, "_origin_main_sha", lambda: None)
+    with pytest.raises(RuntimeError, match="cannot verify"):
+        mod._assert_checkout_is_current_main()

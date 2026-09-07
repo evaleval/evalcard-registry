@@ -75,15 +75,17 @@ jobs:
 
       # Stall beacon — ONE sticky tracking issue (deduplicated by the
       # `refresh-hub-stats-index-stalled` label), never a new issue per run. ANY
-      # failed step opens-or-comments the single issue; a successful run clears it.
+      # failure or cancellation opens-or-comments the single issue; a successful
+      # run clears it.
       - name: Raise/refresh stall beacon
-        if: failure()
+        if: failure() || cancelled()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           label="refresh-hub-stats-index-stalled"
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          body="refresh-hub-stats-index run FAILED on $(date -u +%F) — cause may be the build (rate-limit / row floor), the smoke check, or the publish/restart; inspect the run: ${run_url}. Auto-closes after a successful run."
+          outcome="${{ job.status }}"
+          body="refresh-hub-stats-index run ended ${outcome} on $(date -u +%F) — cause may be the build (rate-limit / row floor), timeout/cancellation, the smoke check, or the publish/restart; inspect the run: ${run_url}. Auto-closes after a successful run."
           gh label create "$label" --color FBCA04 --description "refresh-hub-stats-index cron is failing/blocked" 2>/dev/null || true
           num=$(gh issue list --label "$label" --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)
           if [ -n "$num" ]; then

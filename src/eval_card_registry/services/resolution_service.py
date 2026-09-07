@@ -901,7 +901,6 @@ class ResolutionService:
 
             aliases_df = self.store.table("aliases")
             models_df = self.store.table("canonical_models")
-            orgs_df = self.store.table("canonical_orgs")
 
             a2c: dict[str, str] = {}
             # PASS 1 — canonical ids FIRST. A canonical's own id is a STRONGER
@@ -924,15 +923,12 @@ class ResolutionService:
                 if isinstance(raw, str) and "/" in raw and isinstance(cid, str):
                     a2c.setdefault(_hsnorm(raw), cid)
 
-            org_map: dict[str, str] = {}
-            for _, row in orgs_df.iterrows():
-                cid = row.get("id")
-                if not isinstance(cid, str):
-                    continue
-                org_map[_hsnorm(cid)] = cid
-                hf_org = row.get("hf_org")
-                if isinstance(hf_org, str):
-                    org_map[_hsnorm(hf_org)] = cid
+            # Use the same complete, store-backed org map as every other live
+            # resolver path.  Building a reduced id/hf_org-only map here drops
+            # curated package aliases such as CohereLabs -> cohere and
+            # ibm-granite -> ibm, causing hub-stats lineage enrichment to emit
+            # different org ids from the bulk refresh for the very same row.
+            org_map = self._build_hf_to_dev()
 
             self._hub_stats_indices = (a2c, org_map)
             return self._hub_stats_indices

@@ -28,9 +28,9 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # The DuckDB query against the remote parquet can take a few minutes;
-    # 15 is generous and bounded.
-    timeout-minutes: 15
+    # Include headroom for the correlated seed/publish child to queue behind
+    # another live publisher and then consume its own 60-minute budget.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
 
@@ -123,42 +123,65 @@ jobs:
             msg="chore(seed): bump hub-stats etag watermark ($(date -u +%Y-%m-%d))"
           fi
           git commit -m "$msg"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
+          # Never rebase after the gate: that would push a tree we did not test.
+          # A concurrent main update makes this push fail safely; rerun against
+          # the new head instead.
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
-      # GITHUB_TOKEN-authored pushes do NOT trigger downstream workflows.
-      # Dispatch seed.yml explicitly so the refresh actually deploys.
-      # Only on data changes — etag-only commits don't change what
-      # canonical_models will look like after seed merge, so no need to
-      # redeploy. A failed dispatch after a committed data refresh leaves it
-      # undeployed — fail RED with a manual-fallback hint rather than swallow it.
-      - name: Trigger seed deployment
-        if: steps.diff.outputs.data_changed == 'true'
+      # Retry a previous publish failure even when today's generated data is
+      # unchanged; the sticky issue is the durable recovery signal.
+      - name: Decide whether registry publish is needed
+        id: deploy
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh workflow run seed.yml --ref "${GITHUB_REF_NAME}" || {
-            echo "::error::seed.yml dispatch failed after a committed refresh — deploy manually: gh workflow run seed.yml --ref ${GITHUB_REF_NAME}"
+          stalled=$(gh issue list --label refresh-hub-stats-stalled --state open --json number --jq 'length' 2>/dev/null || echo 0)
+          if [ "${{ steps.diff.outputs.data_changed }}" = "true" ] || [ "$stalled" != "0" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Wait for the correlated seed + flat-data publish to finish. Dispatch
+      # acceptance alone is not deployment success.
+      - name: Publish and wait for verified completion
+        if: steps.deploy.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          correlation="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          title="Seed + publish (${correlation})"
+          gh workflow run seed.yml --ref main -f source_run_id="${correlation}"
+          run_id=""
+          for attempt in $(seq 1 30); do
+            run_id=$(gh run list --workflow seed.yml --event workflow_dispatch --branch main --limit 50 --json databaseId,displayTitle --jq ".[] | select(.displayTitle == \"$title\") | .databaseId" | head -n 1)
+            [ -n "$run_id" ] && break
+            sleep 5
+          done
+          if [ -z "$run_id" ]; then
+            echo "::error::could not locate the correlated seed.yml run"
             exit 1
-          }
+          fi
+          gh run watch "$run_id" --exit-status
 
       # Stall beacon — ONE sticky tracking issue (deduplicated by the
-      # `refresh-hub-stats-stalled` label), never a new issue per run. ANY failed
-      # step (infra / data-regression / commit / dispatch) opens-or-comments the
-      # single issue. It is CLEARED only by a run that actually committed a DATA
-      # change AND dispatched a deploy (success() && data_changed) — NOT by a
-      # no-op or etag-only green day, so a committed-but-undeployed refresh
-      # (dispatch failed) is not silently auto-closed before the deploy is
-      # re-attempted. All `gh` calls are best-effort (|| true) so a beacon-side
+      # `refresh-hub-stats-stalled` label), never a new issue per run. ANY failure
+      # or cancellation (infra / data-regression / timeout / commit / dispatch) opens-or-comments the
+      # single issue. It is CLEARED only after a correlated downstream publish
+      # finishes successfully — never on dispatch acknowledgement alone. A
+      # committed-but-unpublished refresh is retried while the issue remains.
+      # All `gh` calls are best-effort (|| true) so a beacon-side
       # API hiccup can't flip the run's real status.
       - name: Raise/refresh stall beacon
-        if: failure()
+        if: failure() || cancelled()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           label="refresh-hub-stats-stalled"
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          body="refresh-hub-stats run FAILED on $(date -u +%F) — cause may be infra, a data-regression gate, or a deploy dispatch; inspect the run: ${run_url}. Auto-closes after a run that commits + deploys."
+          outcome="${{ job.status }}"
+          body="refresh-hub-stats run ended ${outcome} on $(date -u +%F) — cause may be infra, timeout/cancellation, a data-regression gate, commit, or downstream publish; inspect the run: ${run_url}. Auto-closes only after a correlated publish succeeds."
           gh label create "$label" --color FBCA04 --description "refresh-hub-stats cron is failing/blocked" 2>/dev/null || true
           num=$(gh issue list --label "$label" --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)
           if [ -n "$num" ]; then
@@ -168,12 +191,12 @@ jobs:
           fi
 
       - name: Clear stall beacon
-        if: success() && steps.diff.outputs.data_changed == 'true'
+        if: success() && steps.deploy.outputs.needed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           label="refresh-hub-stats-stalled"
           for num in $(gh issue list --label "$label" --state open --json number --jq '.[].number' 2>/dev/null || true); do
-            gh issue comment "$num" --body "✅ Resolved on $(date -u +%F) — a refresh committed + deployed. Closing." || true
+            gh issue comment "$num" --body "✅ Resolved on $(date -u +%F) — the correlated seed + flat-data publish completed successfully. Closing." || true
             gh issue close "$num" || true
           done

@@ -43,7 +43,7 @@ import urllib.request
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterable
 
 import yaml
 
@@ -67,7 +67,11 @@ class UnionFind:
         self._parent[self.find(a)] = self.find(b)
 
 from eval_card_registry.lib.collision_fold import _bsizes, collision_key
-from eval_card_registry.lib.seed_io import WEAK_SCALAR_FIELDS, resolve_oracle_path
+from eval_card_registry.lib.seed_io import (
+    WEAK_SCALAR_FIELDS,
+    resolve_oracle_path,
+    safe_load_yaml,
+)
 
 # Resolver lives in the workspace package; this script runs from the repo
 # root via `uv run`, so the import resolves through pyproject's path dep.
@@ -259,7 +263,7 @@ def _build_org_alias_index() -> dict[str, str]:
     `minimaxai`->minimax via `_ORG_ALIASES`, and keeps this map identical to the
     one the resolver uses."""
     from eval_entity_resolver.fold import build_curated_org_map
-    data = yaml.safe_load(ORGS_SEED_PATH.read_text()) if ORGS_SEED_PATH.exists() else []
+    data = safe_load_yaml(ORGS_SEED_PATH.read_text()) if ORGS_SEED_PATH.exists() else []
     return build_curated_org_map(data or [])
 
 
@@ -1405,7 +1409,7 @@ def _hf_to_dev() -> dict[str, str]:
     global _HF_TO_DEV
     if _HF_TO_DEV is None:
         from eval_entity_resolver.fold import build_curated_org_map
-        data = yaml.safe_load(ORGS_SEED_PATH.read_text()) if ORGS_SEED_PATH.exists() else []
+        data = safe_load_yaml(ORGS_SEED_PATH.read_text()) if ORGS_SEED_PATH.exists() else []
         _HF_TO_DEV = build_curated_org_map(data or [])
     return _HF_TO_DEV
 
@@ -2006,7 +2010,7 @@ def _dedup_entries(entries: list[dict]) -> list[dict]:
 def _load_known_org_ids() -> set[str]:
     if not ORGS_SEED_PATH.exists():
         return set()
-    data = yaml.safe_load(ORGS_SEED_PATH.read_text()) or []
+    data = safe_load_yaml(ORGS_SEED_PATH.read_text()) or []
     return {e["id"] for e in data if "id" in e}
 
 
@@ -2077,6 +2081,7 @@ def _write_yaml(entries: list[dict], path: Path) -> str:
 CATALOG_OUT_PATH = REPO_ROOT / "seed" / "models" / "sources" / "models_dev_catalog.generated.yaml"
 HF_ORACLE_PATH = REPO_ROOT / "seed" / "models" / "sources" / "hf_oracle.generated.yaml"
 HUB_STATS_PATH = REPO_ROOT / "seed" / "models" / "sources" / "hub_stats.generated.yaml"
+TIER3_PATH = REPO_ROOT / "seed" / "models" / "sources" / "tier3_inferred.generated.yaml"
 CORE_PATH = REPO_ROOT / "seed" / "models" / "core.yaml"
 ENRICH_ALIASES_PATH = REPO_ROOT / "seed" / "models" / "enrichments" / "aliases.yaml"
 ORGS_GENERATED_PATH = REPO_ROOT / "seed" / "orgs.generated.yaml"
@@ -2085,7 +2090,12 @@ ORGS_GENERATED_PATH = REPO_ROOT / "seed" / "orgs.generated.yaml"
 # clash with. HF/curated WIN id+casing. models_dev.generated.yaml (the
 # re-cased pure source) is included so the catalog stays purely additive.
 _CATALOG_EXISTING_SOURCES = (
-    HF_ORACLE_PATH, SEED_PATH, HUB_STATS_PATH, CORE_PATH, ENRICH_ALIASES_PATH,
+    HF_ORACLE_PATH,
+    SEED_PATH,
+    HUB_STATS_PATH,
+    TIER3_PATH,
+    CORE_PATH,
+    ENRICH_ALIASES_PATH,
 )
 
 # Existing-sources set the NON-catalog (full re-cased) write path reconciles
@@ -2095,7 +2105,11 @@ _CATALOG_EXISTING_SOURCES = (
 # re-cased mint whose normalized form collides with a curated core canonical
 # under a DIFFERENT id is suppressed/repointed instead of clobbering core.
 _NONCATALOG_EXISTING_SOURCES = (
-    HF_ORACLE_PATH, HUB_STATS_PATH, CORE_PATH, ENRICH_ALIASES_PATH,
+    HF_ORACLE_PATH,
+    HUB_STATS_PATH,
+    TIER3_PATH,
+    CORE_PATH,
+    ENRICH_ALIASES_PATH,
 )
 
 
@@ -2105,7 +2119,7 @@ def _load_core_skip_ids() -> set[str]:
     removed it from the source universe."""
     if not CORE_PATH.exists():
         return set()
-    doc = yaml.safe_load(CORE_PATH.read_text())
+    doc = safe_load_yaml(CORE_PATH.read_text())
     if not isinstance(doc, dict):
         return set()
     return set(doc.get("skip_ids") or []) | set(doc.get("skip_source_ids") or [])
@@ -2235,6 +2249,41 @@ def _extended_twin_keys(cid: str) -> set[str]:
     return keys
 
 
+def _pick_twin_candidate(cid: str, candidates: list[dict]) -> dict | None:
+    """Pick a stable carry-forward twin without conflating dotted releases.
+
+    ``_twin_key`` deliberately collapses separators so a harmless respelling
+    such as ``veo-3-1`` -> ``veo3-1`` retains its canonical id.  That broad key
+    can also contain distinct model spellings: ``qwen3.8`` and ``qwen-3-8``
+    both fold to ``qwen38`` but are not the same identity under the registry's
+    variant-preserving identity rules.  Prefer an exact identity match whenever
+    there is one.  Preserve the historical separator-only fallback only when
+    the collision bucket has exactly one size-compatible candidate.
+
+    This mirrors the gate's identity rule while retaining the stability rule
+    for unambiguous letter/digit respellings that ``_identity_sig`` intentionally
+    keeps conservative.
+    """
+    from eval_card_registry.lib.collision_fold import _bsizes
+
+    size_matches = [e for e in candidates if _bsizes(cid) == _bsizes(e["id"])]
+    if not size_matches:
+        return None
+
+    def exact_identity(e: dict) -> bool:
+        return (
+            _identity_sig(cid) == _identity_sig(e["id"])
+            and _version_marker_sig(cid) == _version_marker_sig(e["id"])
+        )
+
+    identity_matches = [e for e in size_matches if exact_identity(e)]
+    if identity_matches:
+        return sorted(identity_matches, key=lambda e: e["id"])[0]
+    if len(size_matches) == 1:
+        return size_matches[0]
+    return None
+
+
 def _carry_forward_committed(
     fresh: list[dict], committed: list[dict], adopt_migration: bool = False
 ) -> tuple[list[dict], dict[str, str]]:
@@ -2273,14 +2322,14 @@ def _carry_forward_committed(
         steal a carried-forward entry's alias claims.
     """
     by_id = {e["id"]: e for e in fresh if e.get("id")}
-    by_twin: dict[str, dict] = {}
-    by_twin_ext: dict[str, dict] = {}
+    by_twin: dict[str, list[dict]] = defaultdict(list)
+    by_twin_ext: dict[str, list[dict]] = defaultdict(list)
     by_form: dict[str, dict] = {}
     for e in sorted(fresh, key=lambda x: x.get("id") or ""):
         if e.get("id"):
-            by_twin.setdefault(_twin_key(e["id"]), e)
+            by_twin[_twin_key(e["id"])].append(e)
             for k in _extended_twin_keys(e["id"]):
-                by_twin_ext.setdefault(k, e)
+                by_twin_ext[k].append(e)
             for a in (e.get("aliases") or []):
                 if a:
                     by_form.setdefault(a, e)
@@ -2308,12 +2357,15 @@ def _carry_forward_committed(
         twin = None
         twin_via_form = False
         if cur is None and cid not in skip and "display_name" in c:
-            t = by_twin.get(_twin_key(cid))
+            t = _pick_twin_candidate(cid, by_twin.get(_twin_key(cid), []))
             if t is None:
-                t = next(
-                    (by_twin_ext[k] for k in sorted(_extended_twin_keys(cid))
-                     if k in by_twin_ext),
-                    None,
+                t = _pick_twin_candidate(
+                    cid,
+                    [
+                        e
+                        for k in sorted(_extended_twin_keys(cid))
+                        for e in by_twin_ext.get(k, [])
+                    ],
                 )
             if t is None and "/" in cid and cid.split("/", 1)[0].lower() in _SERVING_HOSTS:
                 # A committed mint under a serving-host prefix (the pre-strip
@@ -2322,8 +2374,7 @@ def _carry_forward_committed(
                 # malformed serving-prefixed id never wins the stability rule).
                 t = by_form.get(cid)
                 twin_via_form = t is not None
-            if t is not None and _bsizes(cid) == _bsizes(t["id"]):
-                twin = t
+            twin = t
         # STABILITY RULE, RUNG-MONOTONE: on a twin match the COMMITTED id wins
         # among EQUAL rungs of the id ladder (the fresh entry is renamed
         # below), so the cron never thrashes ids on an upstream
@@ -2495,6 +2546,27 @@ def _carry_forward_committed(
     return out, claims
 
 
+def _iter_unskipped_source_entries(
+    sources: tuple[Path, ...],
+) -> Iterable[tuple[Path, dict]]:
+    """Yield active source records, excluding generated ids suppressed by core.
+
+    ``skip_source_ids`` removes a generated definition from the merged seed
+    universe. Treating that stale record as an owner during reconciliation can
+    create an enrichment keyed by an entity that the loader will immediately
+    discard, making the refresh path-dependent. Curated definitions in
+    ``core.yaml`` itself remain authoritative even when they override a source
+    id with the same spelling.
+    """
+    skipped = _load_core_skip_ids()
+    for path in sources:
+        for entry in _catalog_load_list(path):
+            cid = entry.get("id") if isinstance(entry, dict) else None
+            if path != CORE_PATH and cid in skipped:
+                continue
+            yield path, entry
+
+
 def _build_existing_index(
     sources: tuple[Path, ...],
 ) -> tuple[dict[str, str], dict[str, str]]:
@@ -2516,17 +2588,16 @@ def _build_existing_index(
             existing_exact.setdefault(form, cid)
             existing_norm.setdefault(_norm(form), cid)
 
-    for path in sources:
-        for e in _catalog_load_list(path):
-            cid = e.get("id")
-            if not cid:
-                continue
-            _add_exact(cid, cid)
-            dn = e.get("display_name")
-            if dn:
-                _add_exact(dn, cid)
-            for a in (e.get("aliases") or []):
-                _add_exact(a, cid)
+    for _path, e in _iter_unskipped_source_entries(sources):
+        cid = e.get("id")
+        if not cid:
+            continue
+        _add_exact(cid, cid)
+        dn = e.get("display_name")
+        if dn:
+            _add_exact(dn, cid)
+        for a in (e.get("aliases") or []):
+            _add_exact(a, cid)
     return existing_exact, existing_norm
 
 
@@ -2586,19 +2657,19 @@ def reconcile_generated_against_existing(
     # the re-emit branch below suppress the batch's own DEFINITION of that id
     # — that would leave the canonical defined nowhere (a bare row).
     defining_ids: set[str] = set()
-    for path in sources:
-        for e in _catalog_load_list(path):
-            if isinstance(e, dict) and e.get("id") and "display_name" in e:
-                defining_ids.add(e["id"])
+    for _path, e in _iter_unskipped_source_entries(sources):
+        if e.get("id") and "display_name" in e:
+            defining_ids.add(e["id"])
     # Valid suppression OWNERS additionally include ids defined by the derived
     # broad sources and by this batch itself — but NEVER an id that exists
     # only as an enrich-record key (suppressing a definition onto a
     # non-defining id would materialize a bare canonical).
     owner_defining: set[str] = set(defining_ids)
-    for path in (CATALOG_OUT_PATH, TIER3_PATH):
-        for e in _catalog_load_list(path):
-            if isinstance(e, dict) and e.get("id") and "display_name" in e:
-                owner_defining.add(e["id"])
+    for _path, e in _iter_unskipped_source_entries(
+        (CATALOG_OUT_PATH, TIER3_PATH)
+    ):
+        if e.get("id") and "display_name" in e:
+            owner_defining.add(e["id"])
     for e in entries:
         if isinstance(e, dict) and e.get("id") and "display_name" in e:
             owner_defining.add(e["id"])
@@ -2626,15 +2697,16 @@ def reconcile_generated_against_existing(
     # id as an alias (a dead record's self-claim must not keep it alive).
     _def_exact: dict[str, str] = {}
     _def_norm: dict[str, str] = {}
-    for path in sources + (CATALOG_OUT_PATH, TIER3_PATH):
-        for e2 in _catalog_load_list(path):
-            cid2 = e2.get("id") if isinstance(e2, dict) else None
-            if not cid2 or cid2 not in owner_defining:
-                continue
-            for form2 in [cid2, e2.get("display_name"), *(e2.get("aliases") or [])]:
-                if form2:
-                    _def_exact.setdefault(form2, cid2)
-                    _def_norm.setdefault(_norm(form2), cid2)
+    for _path, e2 in _iter_unskipped_source_entries(
+        sources + (CATALOG_OUT_PATH, TIER3_PATH)
+    ):
+        cid2 = e2.get("id")
+        if not cid2 or cid2 not in owner_defining:
+            continue
+        for form2 in [cid2, e2.get("display_name"), *(e2.get("aliases") or [])]:
+            if form2:
+                _def_exact.setdefault(form2, cid2)
+                _def_norm.setdefault(_norm(form2), cid2)
     for e2 in entries:
         cid2 = e2.get("id") if isinstance(e2, dict) else None
         if not cid2 or "display_name" not in e2:
@@ -2653,9 +2725,9 @@ def reconcile_generated_against_existing(
     # e.g. `alibaba/qwen-2-5-14b-instruct` -> `Qwen/Qwen2.5-14B-Instruct`) must
     # DEFER to the HF id. Uses eval_entity_resolver.fold.decide_fold so this path
     # and the resolver agree on what counts as the same model (no drift).
-    existing_entries: list[dict] = []
-    for path in sources:
-        existing_entries.extend(_catalog_load_list(path))
+    existing_entries = [
+        entry for _path, entry in _iter_unskipped_source_entries(sources)
+    ]
     hf_to_dev = _hf_to_dev()
     _hf_ids, _alias_to_hf, _by_org_name, _ = build_hf_index(
         existing_entries, hf_to_dev, _oracle_fixed_ids()
@@ -2981,7 +3053,7 @@ _CATALOG_HEADER = """# AUTO-GENERATED by scripts/refresh_from_modelsdev.py (cata
 def _catalog_load_list(path: Path) -> list[dict]:
     if not path.exists():
         return []
-    d = yaml.safe_load(path.read_text())
+    d = safe_load_yaml(path.read_text())
     if isinstance(d, dict):
         d = d.get("entries", [])
     return d or []
@@ -3015,24 +3087,25 @@ def regenerate_catalog(full: list[dict], adopt_migration: bool = False) -> None:
     # fold/donation target — a catalog record keyed by it would materialize a
     # bare canonical that splits the entity from its adopted definition.
     defined_anywhere: set[str] = set()
-    for path in _CATALOG_EXISTING_SOURCES:
-        for e in _catalog_load_list(path):
-            if isinstance(e, dict) and e.get("id") and "display_name" in e:
-                defined_anywhere.add(e["id"])
+    active_existing = list(
+        _iter_unskipped_source_entries(_CATALOG_EXISTING_SOURCES)
+    )
+    for _path, e in active_existing:
+        if e.get("id") and "display_name" in e:
+            defined_anywhere.add(e["id"])
 
-    for path in _CATALOG_EXISTING_SOURCES:
-        for e in _catalog_load_list(path):
-            cid = e.get("id")
-            if not cid or cid not in defined_anywhere:
-                continue
-            _add_form(cid, cid)
-            _add_exact(cid, cid)
-            dn = e.get("display_name")
-            if dn:
-                _add_exact(dn, cid)
-            for a in (e.get("aliases") or []):
-                _add_form(a, cid)
-                _add_exact(a, cid)
+    for _path, e in active_existing:
+        cid = e.get("id")
+        if not cid or cid not in defined_anywhere:
+            continue
+        _add_form(cid, cid)
+        _add_exact(cid, cid)
+        dn = e.get("display_name")
+        if dn:
+            _add_exact(dn, cid)
+        for a in (e.get("aliases") or []):
+            _add_form(a, cid)
+            _add_exact(a, cid)
 
     def _steals(form: str, cid: str) -> bool:
         owner = existing_exact.get(form)
@@ -3048,7 +3121,7 @@ def regenerate_catalog(full: list[dict], adopt_migration: bool = False) -> None:
     # enrich onto the HF id, NOT mint a fresh shadow that aborts the seed.
     from eval_entity_resolver.fold import build_hf_index as _bhi, decide_fold as _df
 
-    _existing_entries = [e for path in _CATALOG_EXISTING_SOURCES for e in _catalog_load_list(path)]
+    _existing_entries = [e for _path, e in active_existing]
     _hf_to_dev_map = _hf_to_dev()
     _chf_ids, _calias, _cby_org, _ = _bhi(_existing_entries, _hf_to_dev_map, _oracle_fixed_ids())
 
@@ -3483,7 +3556,6 @@ def regenerate_catalog(full: list[dict], adopt_migration: bool = False) -> None:
 
 
 # All model source files whose org_ids must have a canonical_orgs row.
-TIER3_PATH = REPO_ROOT / "seed" / "models" / "sources" / "tier3_inferred.generated.yaml"
 _ALL_MODEL_SOURCES = (
     HF_ORACLE_PATH, SEED_PATH, HUB_STATS_PATH, CATALOG_OUT_PATH, TIER3_PATH, CORE_PATH,
 )
@@ -3495,7 +3567,11 @@ ORGS_DISTINCT_ALLOWLIST_PATH = REPO_ROOT / "seed" / "orgs_distinct_allowlist.yam
 def _load_distinct_org_allowlist() -> set[str]:
     if not ORGS_DISTINCT_ALLOWLIST_PATH.exists():
         return set()
-    return {x for x in (yaml.safe_load(ORGS_DISTINCT_ALLOWLIST_PATH.read_text()) or []) if isinstance(x, str)}
+    return {
+        x
+        for x in (safe_load_yaml(ORGS_DISTINCT_ALLOWLIST_PATH.read_text()) or [])
+        if isinstance(x, str)
+    }
 
 
 def _write_source_entries(path: Path, entries: list[dict]) -> None:
@@ -3503,7 +3579,7 @@ def _write_source_entries(path: Path, entries: list[dict]) -> None:
     and the `{skip_ids,...,entries}` dict shape where present."""
     text = path.read_text() if path.exists() else ""
     header = "\n".join(ln for ln in text.splitlines() if ln.startswith("#"))
-    doc = yaml.safe_load(text) if text else None
+    doc = safe_load_yaml(text) if text else None
     if isinstance(doc, dict) and "entries" in doc:
         out = {**doc, "entries": entries}
     else:

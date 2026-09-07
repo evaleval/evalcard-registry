@@ -383,8 +383,14 @@ def build_entry(
     # than a separate snapshot canonical). Without target_canonical,
     # `Olmo-3-1125-32B` aliased to `allenai/olmo-3-32b` would gain a
     # parent edge to itself and corrupt the lineage walker.
+    # The lightweight YAML map above does not include every curated alias from
+    # the resolver's shared org table (notably ``CohereLabs`` and
+    # ``ibm-granite``). Union in the complete HF-prefix map so this cron emits
+    # the same canonical lineage-origin org ids as the models.dev reconcile
+    # step; otherwise the two daily crons rewrite the same rows back and forth.
+    lineage_org_map = {**org_alias_map, **hf_to_dev}
     enrichment = enrich_draft_from_row(
-        row, aliases_to_canonical, org_alias_map,
+        row, aliases_to_canonical, lineage_org_map,
         target_canonical=canonical_id,
     )
 

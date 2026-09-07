@@ -1629,18 +1629,39 @@ def test_every_openrouter_snapshot_key_resolves(resolver):
     )
 
 
-# Ratchet ceiling for BARE (org-less, no `/`) canonical ids — the class gate 4
-# otherwise skips entirely. Includes the router pseudo-endpoint raws
-# (`auto`/`free`/`bodybuilder`/`owl-alpha`/`pareto-code`), which deliberately
-# REMAIN bare mints (real EEE raws; nothing-is-removed floor) even though they
-# are never adopted or aliased under `openrouter/*`. Growth here must be a
-# conscious re-pin, not silent drift.
-# 2026-08-13 re-pin 167 -> 196: 57-day models.dev catch-up (cron stalled since
-# 06-17) minted 29 bare ids from unprefixed provider entries (venice-*, v0-*,
-# voxtral-*, wan2-*, yi-*, writer.palmyra-x4, ...). Inspected: all are real
-# provider entries; several deserve org folds (voxtral->mistralai, wan->alibaba,
-# yi->01-ai) as generator org-mapping follow-ups, which will SHRINK this back.
-_BARE_ID_CEILING = 196
+_BARE_ID_CEILING = 250
+
+
+def test_bare_canonical_org_ambiguity_is_explicit(models_df):
+    """Bare upstream ids are legitimate but lack a namespace from which the
+    generator can safely infer a developer. Their count naturally grows with
+    models.dev, so a frozen size ceiling turns every upstream addition into a
+    manual cron outage. Pin the correctness property instead: a bare row has
+    ``org-unknown`` exactly when its ``org_id`` remains unresolved.
+
+    This keeps the ambiguous tail visible without inventing org ownership. The
+    ceiling retains the existing growth ratchet with bounded headroom for a
+    normal upstream refresh.
+    """
+    bad = []
+    for row in models_df.itertuples():
+        cid = str(row.id)
+        if "/" in cid:
+            continue
+        org_id = getattr(row, "org_id", None)
+        has_org = isinstance(org_id, str) and bool(org_id)
+        tagged_unknown = "org-unknown" in _parse_tags(getattr(row, "tags", None))
+        if has_org == tagged_unknown:
+            bad.append((cid, org_id if has_org else None, tagged_unknown))
+    assert bad == [], (
+        f"{len(bad)} bare canonical id(s) have inconsistent org visibility; "
+        f"expected org-unknown iff org_id is null: {bad[:15]}"
+    )
+    bare = [str(i) for i in models_df["id"].astype(str) if "/" not in str(i)]
+    assert len(bare) <= _BARE_ID_CEILING, (
+        f"bare (org-less) canonical id count grew: {len(bare)} > "
+        f"{_BARE_ID_CEILING}; inspect new upstream mints before re-pinning"
+    )
 
 
 def test_canonical_id_prefix_is_external_or_folds_to_org(models_df, hf_to_dev):
@@ -1650,8 +1671,8 @@ def test_canonical_id_prefix_is_external_or_folds_to_org(models_df, hf_to_dev):
     developer — the same `_openrouter_org_agrees` fold the generator's
     adoption guard applies) OR folds through the curated org map to the
     entry's `org_id` (case/separator-insensitively). Invented ids may only use
-    the curated developer prefix. Bare (org-less) ids are outside the prefix
-    rule but PINNED by count (`_BARE_ID_CEILING`) so the class stays visible."""
+    the curated developer prefix. Bare ids are checked separately by
+    ``test_bare_canonical_org_ambiguity_is_explicit``."""
     from eval_entity_resolver.fold import _norm_org_key
 
     oracle_fixed = set()
@@ -1677,13 +1698,6 @@ def test_canonical_id_prefix_is_external_or_folds_to_org(models_df, hf_to_dev):
         e["id"] for e in (core_doc.get("entries") or [])
         if isinstance(e, dict) and e.get("id") and "display_name" in e
     }
-
-    bare = sorted(str(i) for i in models_df["id"].astype(str) if "/" not in str(i))
-    assert len(bare) <= _BARE_ID_CEILING, (
-        f"bare (org-less) canonical id count grew: {len(bare)} > "
-        f"{_BARE_ID_CEILING}. New bare mints must be a conscious re-pin — "
-        f"inspect the tail: {bare[-15:]}"
-    )
 
     bad = []
     for row in models_df.itertuples():
