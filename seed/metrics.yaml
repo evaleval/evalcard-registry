@@ -360,8 +360,8 @@
   review_status: reviewed
 
 # --- image/geometry benchmark metrics (added for the paperswithcode adapter) ---
-# Bounds from the metrics' defining papers. Unbounded ranges use max_score: null
-# (PSNR/AbsRel/Chamfer are half-open). review_status: draft -> maintainer should
+# Bounds from the metrics' defining papers. Half-open ranges use max_score: .inf
+# (PSNR/AbsRel/Chamfer are unbounded above by definition). review_status: draft -> maintainer should
 # confirm the bounds before promoting to reviewed.
 - id: psnr
   display_name: PSNR
@@ -3582,7 +3582,7 @@
   metadata: '{"kind": "real", "confidence": "medium", "family": "bitrate", "source": "bit-rate (bpsp/bpp); [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
-# --- family: bd — Bjontegaard-delta rate (signed %), unbounded — null bounds, lower better (4) ---
+# --- family: bd — Bjontegaard-delta rate (signed %), unbounded — (-.inf, .inf) bounds, lower better (4) ---
 - id: bd-rate
   display_name: 'BD-Rate'
   aliases:
