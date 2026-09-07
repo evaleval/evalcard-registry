@@ -1,6 +1,11 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+import math
+import json
 
 from eval_card_registry.config import settings
 from eval_card_registry.store.hf_store import get_store, QUERY_TABLE_NAMES
@@ -34,12 +39,58 @@ async def lifespan(app: FastAPI):
     await log_writer.stop()
 
 
+class RegistryJSONResponse(JSONResponse):
+    """JSON with a wire form for non-finite floats.
+
+    Metric bounds use `.inf` / `-.inf` for "unbounded on that side" (see the
+    seed/metrics.yaml header), and an infinite float is not JSON-compliant:
+    Starlette's JSONResponse raises on one (allow_nan=False), and a bare
+    json.dumps would emit the invalid literal `Infinity`. This renders them
+    as the strings "Infinity" / "-Infinity", the form every_eval_ever's
+    schema uses, and NaN as null. Registered as the app's default response
+    class AND on the validation-error handler, since a client can put an
+    infinity in a request body (`1e400` parses to inf) and the 422 echoes
+    the offending input back.
+    """
+
+    @staticmethod
+    def _finite(value):
+        if isinstance(value, float):
+            if math.isinf(value):
+                return "Infinity" if value > 0 else "-Infinity"
+            if math.isnan(value):
+                return None
+            return value
+        if isinstance(value, dict):
+            return {k: RegistryJSONResponse._finite(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [RegistryJSONResponse._finite(v) for v in value]
+        return value
+
+    def render(self, content) -> bytes:
+        return json.dumps(
+            self._finite(content),
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+
+async def _validation_error(request: Request, exc: RequestValidationError):
+    return RegistryJSONResponse(
+        {"detail": jsonable_encoder(exc.errors())}, status_code=422
+    )
+
+
 app = FastAPI(
     title="eval-card-registry",
     description="Entity resolution registry for EEE evaluation data.",
     version="0.1.0",
     lifespan=lifespan,
+    default_response_class=RegistryJSONResponse,
 )
+app.add_exception_handler(RequestValidationError, _validation_error)
 
 PREFIX = "/api/v1"
 

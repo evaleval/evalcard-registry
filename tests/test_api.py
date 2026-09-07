@@ -185,3 +185,33 @@ class TestEntityCRUD:
         get_parents = g.json()["parents"]
         assert isinstance(get_parents, list)
         assert _strip_axis_none(get_parents) == body["parents"]
+
+
+class TestNonFiniteBounds:
+    def test_infinite_metric_bound_is_serialised_as_infinity_string(self, client):
+        client.post("/api/v1/metrics", json={
+            "id": "perplexity-like", "display_name": "Perplexity-like",
+            "score_type": "continuous", "lower_is_better": True,
+            # The wire form: JSON has no infinity literal, so the string is the
+            # input form too (pydantic parses it to float("inf")).
+            "min_score": 1.0, "max_score": "Infinity",
+        })
+        r = client.get("/api/v1/metrics/perplexity-like")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["min_score"] == 1.0
+        assert body["max_score"] == "Infinity"
+        assert "Infinity" in r.text and "inf" not in r.text.replace("Infinity", "")
+
+    def test_validation_error_echoing_an_infinite_input_still_renders(self, client):
+        """`1e400` parses to inf, and the 422 echoes the offending input
+        back; the handler must use the registry response class or the echo
+        itself raises and the client gets a 500."""
+        r = client.post("/api/v1/metrics", content=b'{"id": [1e400], "display_name": "x"}',
+                        headers={"content-type": "application/json"})
+        assert r.status_code == 422, r.text
+        body = r.json()
+        assert body["detail"][0]["input"] == ["Infinity"]
+        r = client.post("/api/v1/metrics", content=b"[1e400]",
+                        headers={"content-type": "application/json"})
+        assert r.status_code == 422, r.text
