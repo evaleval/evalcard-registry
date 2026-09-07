@@ -152,7 +152,13 @@ class ResolutionResult:
     #                 hub-stats), else None — null is "not attested", not "not on HF"}
     #   benchmark -> {"level": composite|family|benchmark|slice,
     #                 "matched_subset": str|None}
-    #   composite|family|metric|harness|org -> {} (reserved)
+    #   harness   -> {"harness_version_stripped": str, "bare_name": str,
+    #                 "bare_tier": "exact"|"normalized"} — ONLY when the
+    #                 resolver stripped a trailing version token to reach the
+    #                 match (`lm_eval 0.4.12` -> `lm-evaluation-harness`);
+    #                 `{}` for a harness hit on the alias tiers and on a
+    #                 no-match.
+    #   composite|family|metric|org -> {} (reserved)
     resolution_detail: Optional[dict] = None
     # The repo id the injected HF id checker confirmed during this resolve
     # (HF-true casing), when it did. Set on checker-won results AND on

@@ -89,6 +89,9 @@ def hier_store(monkeypatch):
              parent_benchmark_id="bench-pro"),
         _row("canonical_benchmarks", id="mmlu", display_name="MMLU"),
     ])
+    tables["eval_harnesses"] = pd.DataFrame([
+        _row("eval_harnesses", id="helm", display_name="HELM"),
+    ])
     tables["canonical_families"] = pd.DataFrame([
         _row("canonical_families", id="fam-x", display_name="Fam X",
              category="reasoning", benchmark_ids=["bench-pro", "bench-sub"],
@@ -107,6 +110,7 @@ def hier_store(monkeypatch):
         _alias("bench-sub", "benchmark", "bench-sub"),
         _alias("mmlu", "benchmark", "mmlu"),
         _alias("Anatomy", "benchmark", "mmlu"),
+        _alias("helm", "harness", "helm"),
         _alias("fam-x", "family", "fam-x"),
         _alias("comp-suite", "composite", "comp-suite"),
     ])
@@ -228,6 +232,26 @@ class TestResolutionDetail:
         r = client.post("/api/v1/resolve", json={
             "raw_value": "comp-suite", "entity_type": "composite"})
         assert r.json()["resolution_detail"] == {}
+
+    def test_harness_detail_empty_without_version_strip(self, client):
+        r = client.post("/api/v1/resolve", json={
+            "raw_value": "helm", "entity_type": "harness"})
+        assert r.json()["resolution_detail"] == {}
+
+    def test_harness_detail_records_a_stripped_version(self, client):
+        """The one harness case that carries keys: the resolver reached the
+        match by dropping a trailing version token. Additive — every other
+        harness response keeps `{}`."""
+        r = client.post("/api/v1/resolve", json={
+            "raw_value": "helm 1.2.3", "entity_type": "harness"})
+        body = r.json()
+        assert body["canonical_id"] == "helm"
+        assert body["strategy"] == "normalized"
+        assert body["resolution_detail"] == {
+            "harness_version_stripped": "1.2.3",
+            "bare_name": "helm",
+            "bare_tier": "exact",
+        }
 
 
 # --- new endpoints ---------------------------------------------------------
