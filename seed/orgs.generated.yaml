@@ -6182,3 +6182,24 @@
   tags: '[]'
   metadata: '{}'
   review_status: reviewed
+- id: dots-studio
+  display_name: dots-studio
+  hf_org: dots-studio
+  kind: community
+  tags: '[]'
+  metadata: '{}'
+  review_status: reviewed
+- id: ornith-ai
+  display_name: ornith-ai
+  hf_org: ornith-ai
+  kind: community
+  tags: '[]'
+  metadata: '{}'
+  review_status: reviewed
+- id: spacexai
+  display_name: spacexai
+  hf_org: spacexai
+  kind: community
+  tags: '[]'
+  metadata: '{}'
+  review_status: reviewed
