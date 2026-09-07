@@ -815,7 +815,12 @@ class TestStructuredBenchmarkFolderFallback:
     and probed (alias tiers only), so a datastore folder that is itself a
     registered benchmark is the fallback identity for the names under it."""
 
-    def _resolver(self):
+    def _resolver(self, *extra_rows):
+        # `extra_rows` lets one test add an alias the others must NOT see:
+        # registering `open_question` makes lexam hit in the FIRST pass, which
+        # is exactly the case `test_first_pass_wins_when_the_child_resolves`
+        # needs and the case `test_folder_fallback_prefers_known_joined_form`
+        # must not have (it pins the retry's joined-form reading).
         return Resolver(
             _store_with_aliases(
                 ("polistemics", "benchmark", "polistemics", None, "confirmed"),
@@ -825,7 +830,26 @@ class TestStructuredBenchmarkFolderFallback:
                 ("llm_stats", "benchmark", "llm-stats", None, "confirmed"),
                 ("mcp-atlas", "benchmark", "mcp-atlas", None, "confirmed"),
                 ("vals_ai", "benchmark", "vals-ai", None, "confirmed"),
+                *extra_rows,
             )
+        )
+
+    def test_first_pass_wins_when_the_child_resolves(self):
+        # The A precondition, pinned so that dropping `match is None` from
+        # `if match is None and dropped_source:` fails here. With
+        # `open_question` registered (seed 1.3.1) the dropped-folder pass
+        # resolves it, so the answer is the child alone: raw `open question`,
+        # no subset. An unconditional retry would probe the kept folder too,
+        # find `lexam` at index 0, and the joined form `lexam open question`
+        # would win — reporting raw `lexam open question` / subset
+        # `open question` for the same canonical.
+        match = self._resolver(
+            ("open_question", "benchmark", "lexam-open-question", None, "confirmed")
+        ).resolve_structured_benchmark("lexam.open_question", source_config="lexam")
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == (
+            "lexam-open-question",
+            "open question",
+            None,
         )
 
     def test_folder_benchmark_recovers_when_nothing_else_resolves(self):
@@ -1064,7 +1088,7 @@ class TestHarnessVersionFallback:
         # the contract is that a non-stripped harness hit carries NO strip keys
         # (the HTTP projection turns that into `{}` — tests/test_d1_hierarchy.py).
         result = self._resolver().resolve("helm", "harness")
-        assert (result.resolution_detail or {}) == {}
+        assert "harness_version_stripped" not in (result.resolution_detail or {})
 
     def test_other_entity_types_untouched(self):
         resolver = self._resolver()

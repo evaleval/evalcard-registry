@@ -101,14 +101,27 @@ def test_unregistered_child_under_a_registered_folder(resolver):
 
 @pytest.mark.parametrize("name,folder", [
     ("benchpress.aa-briefcase-elo", "benchpress"),
-    ("paperswithcode.agents.browsecomp", "paperswithcode"),
+    ("paperswithcode.image_restoration.cbsd68_color_gaussian_denoising_sigma_15",
+     "paperswithcode"),
+    ("paperswithcode.depth_estimation.nyuv2_relative", "paperswithcode"),
 ])
 def test_unregistered_aggregator_folders_stay_unresolved(resolver, name, folder):
     """SEED-REVIEW PIN. Neither aggregator is a registered benchmark, so the
     folder fallback finds nothing. Seeding `benchpress` or `paperswithcode` as
     a benchmark would make it the fallback identity for 238 / 64 distinct
     dotted names (one slice each) — flip this expectation only deliberately,
-    and re-run the census when you do."""
+    and re-run the census when you do.
+
+    The paperswithcode names are chosen so that this test fails for exactly
+    that reason and no other: `paperswithcode.<category>.<child>` stops at the
+    category segment, so the pin turns on the category resolving, not the
+    child (`paperswithcode.agents.browsecomp` is unresolved even though
+    `browsecomp` IS a registered benchmark; `math` and `reasoning` are
+    categories that already resolve). `image_restoration` /
+    `depth_estimation` and their children are computer-vision task
+    configurations, not plausible registrations in an LLM-eval registry, and
+    two pins are kept so one incidental seed cannot silently retire the
+    check."""
     assert resolver.resolve_structured_benchmark(name, folder) is None
 
 

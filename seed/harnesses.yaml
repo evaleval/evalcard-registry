@@ -1,11 +1,14 @@
 # Known canonical evaluation harnesses — pre-populated on seed.
 # Source: derived from scanning all current EEE configs (scripts/scan_eee_entities.py).
 
-# `lm_eval 0.4.11.dev0` is a STOPGAP alias: the producer welds
+# `lm_eval 0.4.11.dev0` is a REDUNDANT stop-gap alias. The producer welds
 # eval_library.name + version into the harness resolution key
-# (canonicalise/stages.py::stage_c_resolve_identities), so no versioned raw
-# can resolve without a per-version alias. Drop it once the producer falls
-# back to the bare name.
+# (canonicalise/stages.py::stage_c_resolve_identities); the resolver now
+# strips a trailing version token for harnesses in resolve mode
+# (`Resolver._no_match_or_harness_retry`) and resolves the bare name, so
+# versioned raws no longer need a per-version alias. The alias is kept only
+# so the existing exact-tier hit for this exact string keeps its provenance
+# (exact/1.0 rather than normalized/0.95). Safe to drop in a follow-up.
 - id: lm-evaluation-harness
   display_name: LM Evaluation Harness
   aliases: ["lm_eval", "lm-eval", "lm_eval_harness", "EleutherAI/lm-evaluation-harness", "lm_eval 0.4.11.dev0"]

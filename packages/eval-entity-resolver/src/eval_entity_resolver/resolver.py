@@ -403,9 +403,10 @@ class Resolver:
         the folder (`artificial_analysis.unknownbench`). The consequence for
         seed review: registering a datastore folder name as a benchmark makes
         it the fallback identity for every dotted name under that folder the
-        registry does not otherwise know, with one slice per child — today
-        `benchpress` (238 distinct names) and `paperswithcode` (64) sit in that
-        position and stay unresolved only because neither is a benchmark alias.
+        registry does not otherwise know, with one slice per child — at the
+        time of writing, `benchpress` (238 distinct names) and
+        `paperswithcode` (64) sit in that position and stay unresolved only
+        because neither is a benchmark alias.
 
         `subset` is only meaningful when the winning canonical is the segment
         hit itself; when the joined form won, the trailing segments belong to
@@ -448,11 +449,12 @@ class Resolver:
         benchmark vocabulary and spell the winner (see
         `resolve_structured_benchmark`). The segment at `alias_tiers_only_at`
         is probed with the exact/normalized alias tiers ONLY, never fuzzy:
-        that index is the folder-named segment of the fallback retry, which
-        today is not probed at all, and the fuzzy tier's benchmark stem
-        matching (run-configuration token stripping) would be a new inference
-        surface on it. `-1` (the default) means every segment takes the full
-        chain, which is the unchanged first pass."""
+        that index is the folder-named segment of the fallback retry, and
+        before this fallback the folder segment was never probed at all, so
+        the fuzzy tier's benchmark stem matching (run-configuration token
+        stripping) would be a new inference surface on it. `-1` (the default)
+        means every segment takes the full chain, which is the first pass and
+        is unchanged by the fallback."""
         if len(segments) > 1 and self._segment_is_metric(segments[-1], source_config):
             segments = segments[:-1]
 
