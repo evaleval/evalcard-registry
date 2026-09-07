@@ -95,6 +95,7 @@ KNOWN_EXTRACTION_MISROUTES = frozenset({
     ("pie-bench-edit-region-clip-similarity", "PIE-Bench Edit Region CLIP Similarity"),
     ("pie-bench-whole-image-clip-similarity", "PIE-Bench Whole Image CLIP Similarity"),
     ("pointmap-accuracy", "Pointmap Accuracy"),
+    ("polistemics.adherence", "Polistemics Rubric Score"),
     ("prompt-level-loose-accuracy", "Prompt-Level Loose Accuracy"),
     ("prompt-level-strict-accuracy", "Prompt-Level Strict Accuracy"),
     ("r-at-1-mean-0-3-and-0-5", "R@1 Mean(0.3 and 0.5)"),

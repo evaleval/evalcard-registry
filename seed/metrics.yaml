@@ -4630,3 +4630,20 @@
   max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "unit": "seconds", "source": "mean wall-clock time to complete one task, in seconds. Distinct from mean-response-time, which is per LLM invocation and reported in milliseconds.", "provenance": "cocoabench-adapter"}'
   review_status: draft
+
+# --- Polistemics (arXiv:2607.25953) ---
+# display_name is benchmark-scoped ("Polistemics Rubric Score", NOT bare
+# "Rubric Score"): the seed auto-aliases display_name, and a generic
+# "Rubric Score" alias would claim other sources' raw rubric-score fields
+# (same hijack the cvebench.mean comment above guards against). Minted for
+# the pending EEE_datastore submission; datastore records reference the
+# metric by id. review_status draft -> maintainer promotes after review.
+- id: polistemics.adherence
+  display_name: Polistemics Rubric Score
+  aliases: []
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"family": "pass_rate", "definition": "Share of passed binary rubric sub-questions per response; each sub-question verdict is a strict majority vote of a three-model judge panel.", "paper": "https://arxiv.org/abs/2607.25953"}'
+  review_status: draft

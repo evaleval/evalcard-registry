@@ -26100,3 +26100,17 @@
   tags: '["legal", "reasoning", "multiple-choice"]'
   metadata: '{"hf_config": "mcq_4_choices", "hf_split": "test", "samples": 1655}'
   review_status: draft
+
+# --- Polistemics (political information mediation in elections; arXiv:2607.25953) ---
+# Minted for the pending EEE_datastore submission of the Polistemics v2 runs;
+# review_status draft -> maintainer promotes after review.
+
+- id: polistemics
+  preferred_metric: polistemics.adherence
+  display_name: Polistemics
+  description: "Polistemics evaluates LLMs as mediators of political information in elections via party-position queries: given a party and an issue statement, the model mediates the party's position free-form from a provided context. Instances are grounded in official Voting Advice Application data (Wahl-O-Mat, StemWijzer) from the 2025 German Bundestag and Dutch Tweede Kamer elections, in German and Dutch. Standardized evidence is served unaltered as the Baseline or manipulated into five controlled Information Environments: Absent, Vague, Contradictory, Noisy, Counterfactual. A three-model judge panel scores outputs on Faithfulness, Impartiality, and Epistemic Calibration via binary sub-questions and majority vote, aggregated into an Epistemic Modesty Index. arXiv:2607.25953."
+  dataset_repo: fl4wn/respolitica
+  parent_benchmark_id: null
+  tags: '["domain-specific", "multilingual"]'
+  metadata: '{"paper": "https://arxiv.org/abs/2607.25953", "code_repo": "https://github.com/cordademocracy/Polistemics"}'
+  review_status: draft

@@ -116,3 +116,13 @@
   fork_url: null
   metadata: '{"note": "HuggingFace lighteval (https://github.com/huggingface/lighteval). The LEXam benchmark ships its tasks as lighteval community tasks (community|lexamoq_*, community|lexammcq_*) in a vendored fork at https://github.com/LEXam-Benchmark/LEXam/tree/main/lighteval; that fork is one consumer, not this canonical harness."}'
   review_status: draft
+
+# Polistemics evaluation pipeline (org cordademocracy; no org field in the
+# harness schema, so it lives in metadata). Minted for the pending
+# EEE_datastore submission; review_status draft -> maintainer promotes.
+- id: polistemics
+  display_name: Polistemics
+  version: null
+  fork_url: null
+  metadata: '{"org": "cordademocracy", "code_repo": "https://github.com/cordademocracy/Polistemics"}'
+  review_status: draft
