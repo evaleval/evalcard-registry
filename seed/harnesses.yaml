@@ -1,8 +1,14 @@
 # Known canonical evaluation harnesses — pre-populated on seed.
 # Source: derived from scanning all current EEE configs (scripts/scan_eee_entities.py).
 
+# `lm_eval 0.4.11.dev0` is a STOPGAP alias: the producer welds
+# eval_library.name + version into the harness resolution key
+# (canonicalise/stages.py::stage_c_resolve_identities), so no versioned raw
+# can resolve without a per-version alias. Drop it once the producer falls
+# back to the bare name.
 - id: lm-evaluation-harness
   display_name: LM Evaluation Harness
+  aliases: ["lm_eval", "lm-eval", "lm_eval_harness", "EleutherAI/lm-evaluation-harness", "lm_eval 0.4.11.dev0"]
   version: null
   fork_url: null
   metadata: '{}'
@@ -84,6 +90,29 @@
   fork_url: null
   metadata: '{}'
   review_status: reviewed
+
+- id: alpaca-eval
+  display_name: AlpacaEval
+  version: null
+  fork_url: null
+  metadata: '{"repo": "https://github.com/tatsu-lab/alpaca_eval", "note": "the harness behind the alpacaeval-1-0 and alpacaeval-2-0 leaderboards; the import name is alpaca_eval, which the normalized matcher already reaches from this id"}'
+  review_status: draft
+
+- id: inspect-ai
+  display_name: Inspect AI
+  aliases: ["Inspect", "UK AISI Inspect"]
+  version: null
+  fork_url: null
+  metadata: '{"source": "UK AI Security Institute Inspect; the every_eval_ever converter publishes this slug as eval_library.name", "provenance": "eee-converters"}'
+  review_status: draft
+
+- id: lighteval
+  display_name: Lighteval
+  aliases: ["hf-lighteval"]
+  version: null
+  fork_url: null
+  metadata: '{"note": "HuggingFace lighteval (https://github.com/huggingface/lighteval). The LEXam benchmark ships its tasks as lighteval community tasks (community|lexamoq_*, community|lexammcq_*) in a vendored fork at https://github.com/LEXam-Benchmark/LEXam/tree/main/lighteval; that fork is one consumer, not this canonical harness."}'
+  review_status: draft
 
 # Polistemics evaluation pipeline (org cordademocracy; no org field in the
 # harness schema, so it lives in metadata). Minted for the pending

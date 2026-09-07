@@ -1,7 +1,7 @@
 # Benchmark groups whose ids/display names/aliases collide under the
 # seed-time normalized-key guard (casefold + strip non-alphanumerics) but
 # are verified GENUINELY DISTINCT benchmarks. A pair that is actually the
-# same benchmark is folded per specs/benchmark-relationships-audit.md §4,
+# same benchmark is folded (specs/benchmark-relationships-audit.md),
 # never allowlisted.
 - [air-bench-2024-14-12-race, race]            # AIR-Bench "Race" category vs the RACE reading benchmark
 - [humaneval, humaneval-plus]                  # "HumanEval+" alias strips to humaneval

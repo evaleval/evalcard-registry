@@ -776,3 +776,57 @@ class TestResolverThreadsPlatform:
         # Exact-match path: no fuzzy capture, platform stays None.
         result = Resolver(store).resolve("openai/gpt-4o", "model")
         assert result.inference_platform is None
+
+
+class TestBenchmarkRunConfigStrip:
+    """Benchmarks get a run-configuration-only strip vocabulary. Eval
+    methodology is not benchmark identity, but answer format and metric
+    tokens are held back deliberately."""
+
+    def _store(self):
+        return _store_with_aliases(
+            ("mmlu", "benchmark", "mmlu", None, "confirmed"),
+            ("mmlu_college_physics", "benchmark", "mmlu", None, "confirmed"),
+            ("bbh_snarks", "benchmark", "bbh", None, "confirmed"),
+            ("global-mmlu", "benchmark", "global-mmlu", None, "confirmed"),
+            ("truthfulqa", "benchmark", "truthfulqa", None, "confirmed"),
+            ("acp_bench", "benchmark", "acpbench", None, "confirmed"),
+        )
+
+    def test_strips_cot_zeroshot_infix(self):
+        result = Resolver(self._store()).resolve(
+            "mmlu flan cot zeroshot college physics", "benchmark"
+        )
+        assert result.canonical_id == "mmlu"
+        assert result.strategy == "fuzzy"
+
+    def test_strips_cot_fewshot_infix(self):
+        assert (
+            Resolver(self._store()).resolve("bbh_cot_fewshot_snarks", "benchmark").canonical_id
+            == "bbh"
+        )
+
+    def test_strips_gen_and_shot_suffixes(self):
+        assert (
+            Resolver(self._store()).resolve("global_mmlu_gen_0shot", "benchmark").canonical_id
+            == "global-mmlu"
+        )
+
+    def test_holds_back_metric_tokens(self):
+        # `_mc2` is metric identity: it must not strip onto the English parent.
+        assert (
+            Resolver(self._store()).resolve("truthfulqa_de_mc2", "benchmark").canonical_id
+            is None
+        )
+
+    def test_holds_back_answer_format_tokens(self):
+        # `_bool` / `_mcq` are subsets the registry models separately.
+        assert (
+            Resolver(self._store()).resolve("acp_bench_bool", "benchmark").canonical_id is None
+        )
+
+    def test_no_run_config_token_is_a_no_op(self):
+        assert (
+            Resolver(self._store()).resolve("some_unknown_benchmark", "benchmark").canonical_id
+            is None
+        )

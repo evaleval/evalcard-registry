@@ -175,3 +175,86 @@ hf-open-llm-v2:
   display: HF Open LLM v2
   configs:
     - hfopenllm_v2
+
+# Scoped members ({config, org[, source]}) claim only the matching org
+# partition of a config (composite-partition spec). `org` is the
+# org_token: registry org id, or kebab of the raw org string when
+# unresolved.
+aisi-inference-scaling:
+  display: How Inference Compute Shapes Frontier LLM Evaluation
+  configs:
+    - {config: hle,           org: uk-aisi}
+    - {config: healthbench,   org: uk-aisi}
+    - {config: terminalbench, org: uk-aisi}
+    - {config: swebenchpro,   org: uk-aisi}
+    - {config: frontiermath,  org: uk-aisi}
+
+scale-seal-hle:
+  display: Scale SEAL HLE Leaderboard
+  configs:
+    - {config: hle, org: scale-ai}
+
+# --- aiXamine (QCRI) trust-evaluation service leaderboards ---
+aixamine-adversarial-robustness:
+  display: aiXamine Adversarial Robustness
+  family_id: aixamine
+  category: security
+  configs:
+    - aixamine_adversarial_robustness
+  review_status: draft
+aixamine-code-security:
+  display: aiXamine Code Security
+  family_id: aixamine
+  category: security
+  configs:
+    - aixamine_code_security
+  review_status: draft
+aixamine-fairness-bias:
+  display: aiXamine Fairness & Bias
+  family_id: aixamine
+  category: safety
+  configs:
+    - aixamine_fairness_bias
+  review_status: draft
+aixamine-hallucination:
+  display: aiXamine Hallucination
+  family_id: aixamine
+  category: factuality
+  configs:
+    - aixamine_hallucination
+  review_status: draft
+aixamine-jailbreak:
+  display: aiXamine Jailbreak
+  family_id: aixamine
+  category: safety
+  configs:
+    - aixamine_jailbreak
+  review_status: draft
+aixamine-model-data-privacy:
+  display: aiXamine Model & Data Privacy
+  family_id: aixamine
+  category: security
+  configs:
+    - aixamine_model_data_privacy
+  review_status: draft
+aixamine-ood-robustness:
+  display: aiXamine Out-of-Distribution Robustness
+  family_id: aixamine
+  category: security
+  configs:
+    - aixamine_ood_robustness
+  review_status: draft
+aixamine-over-refusal:
+  display: aiXamine Over-Refusal
+  family_id: aixamine
+  category: safety
+  configs:
+    - aixamine_over_refusal
+  review_status: draft
+aixamine-safety-alignment:
+  display: aiXamine Safety & Alignment
+  family_id: aixamine
+  category: safety
+  configs:
+    - aixamine_safety_alignment
+  review_status: draft

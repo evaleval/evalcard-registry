@@ -10,11 +10,14 @@ get back from `POST /api/v1/resolve`."""
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
 from eval_entity_resolver.alias_store import AliasStore
 from eval_entity_resolver.canonical_store import CanonicalStore, _hf_repo_id_of
+from eval_entity_resolver.eee import _keyword_extract, prepare_eval_name_segments
+from eval_entity_resolver.normalization import normalize
 from eval_entity_resolver.models import (
     HfIdHit,
     ResolutionResult,
@@ -29,6 +32,23 @@ from eval_entity_resolver.strategies.fuzzy import fuzzy_match
 # above _STEM_CONFIDENCE (0.90, fuzzy) so the provenance is clear in the
 # resolution log.
 _NORMALIZED_CONFIDENCE = 0.95
+
+# Two-character segments are language codes and version fragments, never a
+# benchmark, and the registry does hold a handful of two-letter canonicals
+# (`if`, `mc`, `nq`) a bare segment would otherwise collide with.
+_MIN_BENCHMARK_SEGMENT_LEN = 3
+
+
+@dataclass
+class StructuredBenchmark:
+    """One dotted `evaluation_name` resolved against the benchmark
+    vocabulary. `benchmark_raw` is the surface form to record downstream:
+    the winning segment plus any subset segments, which is what the
+    producer's slice machinery reads."""
+
+    canonical_id: str
+    benchmark_raw: str
+    subset: Optional[str]
 
 
 class Resolver:
@@ -244,6 +264,121 @@ class Resolver:
         if len(specific) == 1:
             return next(iter(specific))
         return None
+
+    def resolve_structured_benchmark(
+        self,
+        raw_name: Optional[str],
+        source_config: Optional[str] = None,
+    ) -> Optional["StructuredBenchmark"]:
+        """Positionless structural resolution for a dotted `evaluation_name`
+        (`bbq.bbq.overall`, `MMLU.MMLU-Pro.overall`, `vals_ai.mmlu_pro.biology`).
+
+        The benchmark-side counterpart to `resolve_structured_metric_id`, and
+        for the same reason: segment roles vary by adapter. The benchmark can
+        sit first (`bbq.bbq.overall`), second (`vals_ai.mmlu_pro.biology`) or
+        third (`{composite}.{family}.{benchmark}.{split}`), so no positional
+        parse is trusted. Every segment is probed against the registry's
+        benchmark vocabulary and membership decides.
+
+        Before probing: identical adjacent segments collapse, aggregate
+        markers (`overall`) and purely numeric segments are dropped, a
+        leading segment naming the row's own `source_config` is dropped, and
+        a trailing segment that names a metric is dropped (the legacy
+        `bfcl.live.live_accuracy` contract, where the last segment is the
+        metric).
+
+        Each hit is then re-tried with its trailing segments attached, from
+        the shallowest hit down, and the first surface form the registry
+        knows wins. That keeps the MOST SPECIFIC reading: a leading source /
+        composite / family namespace loses to the benchmark it qualifies
+        (`MMLU.MMLU-Pro` is MMLU-Pro), while a subset that only means
+        something under its parent stays with it (`vals_ai.mmlu_pro.math` is
+        MMLU-Pro's math subject, not the MATH dataset). Segments after the
+        winner are the subset, kept on `benchmark_raw` so the producer's
+        slice machinery still sees them.
+
+        Returns None when no segment resolves, so callers fall back to
+        `clean_eval_name` unchanged.
+        """
+        segments = prepare_eval_name_segments(raw_name)
+        if segments is None:
+            return None
+        if (
+            len(segments) > 1
+            and source_config
+            and normalize(segments[0]) == normalize(source_config)
+        ):
+            segments = segments[1:]      # leading source namespace, not a benchmark
+        if len(segments) > 1 and self._segment_is_metric(segments[-1], source_config):
+            segments = segments[:-1]
+
+        hits: list[tuple[int, str]] = []
+        for i, segment in enumerate(segments):
+            probe = (
+                self.resolve(segment, "benchmark", source_config, check_hf=False)
+                if len(segment) >= _MIN_BENCHMARK_SEGMENT_LEN
+                else None
+            )
+            if probe is not None and probe.canonical_id is not None:
+                hits.append((i, probe.canonical_id))
+                continue
+            nxt = segments[i + 1] if i + 1 < len(segments) else None
+            if not self._is_namespace_segment(segment, nxt, source_config):
+                # An unrecognized segment ends the identity path: anything
+                # deeper is a subset of a benchmark the registry doesn't know
+                # (`vals_ai.programbench.strict`), and matching it on its own
+                # would report the subset as the benchmark.
+                break
+        if not hits:
+            return None
+
+        def _spell(parts: list[str]) -> str:
+            return " ".join(p.replace("_", " ") for p in parts)
+
+        for index, canonical in hits:
+            benchmark_raw = _spell(segments[index:])
+            if index == len(segments) - 1:
+                return StructuredBenchmark(canonical, benchmark_raw, None)
+            joined = self.resolve(
+                benchmark_raw, "benchmark", source_config, check_hf=False
+            )
+            if joined.canonical_id is not None:
+                return StructuredBenchmark(
+                    joined.canonical_id, benchmark_raw, _spell(segments[index + 1:])
+                )
+
+        index, canonical = hits[-1]
+        return StructuredBenchmark(
+            canonical, _spell(segments[index:]), _spell(segments[index + 1:]) or None
+        )
+
+    def _is_namespace_segment(
+        self, segment: str, next_segment: Optional[str], source_config: Optional[str]
+    ) -> bool:
+        """A leading segment that qualifies the benchmark rather than being
+        one, so the probe may look past it: a composite or family the registry
+        knows, or a stem the next segment extends (`alpaca_eval` before
+        `alpaca_eval_v2`)."""
+        for entity_type in ("composite", "family"):
+            if exact_match(
+                segment, entity_type, source_config, self.store
+            ) or normalized_match(segment, entity_type, self.store, source_config):
+                return True
+        return next_segment is not None and normalize(next_segment).startswith(
+            normalize(segment) + " "
+        )
+
+    def _segment_is_metric(self, segment: str, source_config: Optional[str]) -> bool:
+        """The documented dotted-name contract is that the last segment is
+        the metric (`bfcl.live.live_accuracy`). Honour it when the segment
+        resolves as a metric or reads as one to the metric extractor, so a
+        metric tail is never mistaken for a subset."""
+        spelled = segment.replace("_", " ")
+        if exact_match(segment, "metric", source_config, self.store) or normalized_match(
+            segment, "metric", self.store, source_config
+        ):
+            return True
+        return _keyword_extract(spelled.lower()) is not None
 
     # ------------------------------------------------------------------
     # HF id check (injected)

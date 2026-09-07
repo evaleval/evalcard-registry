@@ -658,3 +658,50 @@ def test_metric_folds_loaded_and_validated(fresh_seed_env):
     ]))
     out = _seed_expect_fail(seed_dir)
     assert "chained" in out
+
+
+def test_composites_scoped_members_json_encode(fresh_seed_env):
+    """Scoped configs members ({config, org[, source]}) survive the seed
+    as JSON objects in `source_configs` — str() coercion would ship
+    Python-repr garbage the producer can't parse (composite-partition
+    spec)."""
+    import json
+
+    import pandas as pd
+
+    seed_dir, fixtures_dir = fresh_seed_env
+    (seed_dir / "composites.yaml").write_text(yaml.safe_dump({
+        "aisi-study": {
+            "display": "AISI study",
+            "configs": [
+                "plain-config",
+                {"config": "hle", "org": "uk-aisi"},
+                {"config": "healthbench", "org": "uk-aisi",
+                 "source": "some-study"},
+            ],
+        },
+    }))
+    _seed(seed_dir)
+    df = pd.read_parquet(fixtures_dir / "canonical_composites.parquet")
+    row = df[df["id"] == "aisi-study"].iloc[0]
+    decoded = json.loads(row["source_configs"])
+    assert decoded == [
+        "plain-config",
+        {"config": "hle", "org": "uk-aisi"},
+        {"config": "healthbench", "org": "uk-aisi", "source": "some-study"},
+    ]
+
+
+def test_composites_scoped_member_validation(fresh_seed_env):
+    seed_dir, _ = fresh_seed_env
+    (seed_dir / "composites.yaml").write_text(yaml.safe_dump({
+        "bad": {"configs": [{"config": "hle", "source": "no-org"}]},
+    }))
+    out = _seed_expect_fail(seed_dir)
+    assert "without `org`" in out
+
+    (seed_dir / "composites.yaml").write_text(yaml.safe_dump({
+        "bad": {"configs": [{"organization": "uk-aisi"}]},
+    }))
+    out = _seed_expect_fail(seed_dir)
+    assert "config, org" in out

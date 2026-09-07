@@ -141,6 +141,59 @@ _STRIP_SUFFIX_PATTERNS: list[re.Pattern[str]] = [
 # precedes the budget so non-thinking numeric tails are unaffected.
 _THINKING_BUDGET_PRESERVE_RE = re.compile(r"(.*-thinking)-\d+k$", re.IGNORECASE)
 
+# ---------------------------------------------------------------------------
+# Benchmark run-configuration vocabulary
+# ---------------------------------------------------------------------------
+# Harness task names weld the run configuration into the benchmark name
+# (`mmlu_flan_cot_zeroshot_college_physics`, `bbh_cot_fewshot_snarks`,
+# `global_mmlu_gen_0shot`). Eval methodology is not benchmark identity
+# (specs/entity-modeling.md (c)), so these tokens are dropped anywhere in
+# the name and what remains is matched against the registry.
+#
+# Deliberately NOT here: `mc1`/`mc2` (metric identity) and `bool`/`mcq`
+# (answer format, which the registry models as distinct subsets).
+_BENCHMARK_RUN_CONFIG_TOKENS = frozenset({
+    "cot", "zeroshot", "fewshot", "0shot", "flan", "gen",
+})
+_BENCHMARK_SHOT_TOKEN_RE = re.compile(r"^\d+shot$")
+
+
+def _strip_run_config_tokens(value: str) -> str | None:
+    """Drop run-configuration tokens from a benchmark name. Returns the
+    remaining tokens space-joined (the normalized tier collapses separators,
+    so the join character is immaterial), or None when nothing was dropped
+    or nothing would survive."""
+    tokens = re.split(r"[\s_\-]+", value.strip())
+    kept = [
+        t for t in tokens
+        if t.lower() not in _BENCHMARK_RUN_CONFIG_TOKENS
+        and not _BENCHMARK_SHOT_TOKEN_RE.match(t.lower())
+    ]
+    if not kept or len(kept) == len(tokens):
+        return None
+    return " ".join(kept)
+
+
+def _benchmark_stem_match(
+    raw_value: str, alias_store, source_config: Optional[str]
+) -> tuple[Optional[str], float, None]:
+    """Benchmark counterpart to the model stem match: one candidate, built
+    by removing run-configuration tokens. Runs after exact and normalized,
+    so a canonical that genuinely carries such a token in its name (an
+    `-x-shot` benchmark) still wins on its own spelling."""
+    candidate = _strip_run_config_tokens(raw_value)
+    if candidate is None:
+        return None, 0.0, None
+    canonical_id = (
+        alias_store.lookup(candidate, "benchmark", source_config)
+        or alias_store.get_normalized_lookup("benchmark", source_config).get(
+            normalize(candidate)
+        )
+    )
+    if canonical_id is None:
+        return None, 0.0, None
+    return canonical_id, _STEM_CONFIDENCE, None
+
 # Known org aliases: {variant_prefix: canonical_prefix}
 # Convention: simplify HF org names (e.g. "deepseek-ai" → "deepseek") to the
 # shorter form used as canonical in this registry.
@@ -567,10 +620,15 @@ def fuzzy_match(
     (`together/`/`fireworks/`/…) because an explicit model-name suffix host
     token is the stronger per-run signal.
     """
+    # Benchmarks get their own, much narrower vocabulary: run-configuration
+    # tokens only.
+    if entity_type == "benchmark":
+        return _benchmark_stem_match(raw_value, alias_store, source_config)
+
     # The heuristics below are intentionally model-specific: they strip
     # hosting prefixes, org aliases, dated model snapshots, and inference-mode
-    # suffixes. Applying them to benchmarks/metrics/harnesses can merge
-    # unrelated entities that merely share a host-like prefix or model-ish tail.
+    # suffixes. Applying them to metrics/harnesses can merge unrelated
+    # entities that merely share a host-like prefix or model-ish tail.
     if entity_type != "model":
         return None, 0.0, None
 

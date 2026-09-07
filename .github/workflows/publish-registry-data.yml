@@ -11,7 +11,7 @@ name: Publish registry data
 #     Idempotent — the script reads the remote manifest.json and
 #     skips the upload if content_hash hasn't changed.
 #
-# See notes/hierarchy-alignment.md §7 Step 2 for the design.
+# See notes/hierarchy-alignment.md for the design.
 
 on:
   pull_request:

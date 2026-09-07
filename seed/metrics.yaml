@@ -1,9 +1,21 @@
 # Known canonical metrics — pre-populated on seed.
 # Source: derived from scanning all EEE configs (scripts/scan_eee_entities.py).
+#
+# Bounds: `min_score` / `max_score` are the metric's range by definition.
+#   .inf / -.inf  the metric is unbounded on that side BY DEFINITION
+#                 (perplexity [1, inf), error distances [0, inf), Elo and
+#                 signed deltas (-inf, inf)).
+#   null          the bound is not stated: catch-alls and bespoke composites
+#                 whose range no source documents. Consumers fall back to the
+#                 record's own bounds.
+# On the wire (the API and the producer's JSON sidecars) an infinite bound is
+# the string "Infinity" / "-Infinity", the form every_eval_ever's schema uses;
+# parquet keeps the float. Each id must appear exactly once
+# (tests/test_seed_unique_ids.py).
 
 - id: accuracy
   display_name: Accuracy
-  aliases: ["Acc", "Top-1 Accuracy"]
+  aliases: ["Acc", "Top-1 Accuracy", "Multiple-Choice Accuracy", "Accuracy on Multiple-Choice Questions"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -33,7 +45,7 @@
 
 - id: exact-match
   display_name: Exact Match
-  aliases: ["EM", "EM-1"]
+  aliases: ["EM", "EM-1", "exact"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -43,7 +55,7 @@
 
 - id: f1
   display_name: F1 Score
-  aliases: ["F1", "Tokenized F1"]
+  aliases: ["F1", "Tokenized F1", "f1_score", "f1-score"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -97,12 +109,12 @@
 
 - id: cot-correct
   display_name: COT Correct
-  aliases: ["COT correct", "Equivalent (CoT)"]
+  aliases: ["COT correct", "chain_of_thought_correctness"]
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
   max_score: 1.0
-  metadata: '{}'
+  metadata: '{"source": "HELM schema_capabilities.yaml chain_of_thought_correctness, display_name \"COT correct\": fraction of correct answers after chain of thought", "note": "this is HELM chain_of_thought_correctness and not math_equiv_chain_of_thought, whose display name \"Equivalent (CoT)\" was an alias here and now belongs to math-equivalent-chain-of-thought"}'
   review_status: reviewed
 
 - id: win-rate
@@ -123,6 +135,15 @@
   min_score: 0.0
   max_score: 100.0
   metadata: '{"note": "win-rate aggregated across tasks/opponents by median; a different aggregation than mean-win-rate, kept separate like mean-win-rate"}'
+  review_status: draft
+
+- id: discrete-win-rate
+  display_name: Discrete Win Rate
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 100.0
+  metadata: '{"note": "win-rate with the soft judge preference rounded to a win or loss before averaging, so a 1.7 preference on the judge\u2019s [1, 2] scale counts as a full win; explicit ties still count half, as in win-rate (alpaca_eval/metrics/helpers.py ZeroOneScoringRule). Reported alongside win-rate by AlpacaEval"}'
   review_status: draft
 
 - id: harmlessness
@@ -150,7 +171,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: reviewed
 
@@ -159,8 +180,8 @@
   aliases: ["elo", "overall_elo"]
   score_type: continuous
   lower_is_better: false
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{}'
   review_status: reviewed
 
@@ -170,7 +191,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 1.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: reviewed
 
@@ -180,9 +201,19 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: reviewed
+
+- id: average-response-length
+  display_name: Average Response Length
+  aliases: ["avg_length"]
+  score_type: continuous
+  lower_is_better: null
+  min_score: 0.0
+  max_score: .inf
+  metadata: '{"unit": "characters", "note": "mean length of the evaluated model output, reported for length-bias context rather than as a quality score \u2014 hence lower_is_better: null. Distinct from calvin-avg-seq-length, which counts task sequences on a bounded 0-5 scale; distinct from average-word-count, which counts words rather than characters."}'
+  review_status: draft
 
 - id: mean-score
   display_name: Mean Score
@@ -204,7 +235,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: reviewed
 
@@ -214,7 +245,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: reviewed
 
@@ -224,7 +255,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: reviewed
 
@@ -234,7 +265,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: reviewed
 
@@ -244,7 +275,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 1.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: reviewed
 
@@ -254,7 +285,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 1.0
-  max_score: null
+  max_score: .inf
   metadata: '{"note": "rank aggregated across tasks by mean; a different aggregation than a single rank position"}'
   review_status: draft
 
@@ -265,7 +296,7 @@
 # benchmark (metric_meta_hotfix chain registry -> eee_record -> default).
 - id: refusal-rate
   display_name: Refusal Rate
-  aliases: ["Refusal Rate"]
+  aliases: ["Refusal Rate", "refusal"]
   score_type: continuous
   lower_is_better: null
   min_score: 0.0
@@ -337,7 +368,7 @@
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: draft
 
@@ -364,7 +395,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: draft
 
@@ -383,7 +414,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{}'
   review_status: draft
 
@@ -425,7 +456,7 @@
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: fps
@@ -435,7 +466,7 @@
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: maniqa
@@ -475,7 +506,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: clipiqa-plus
@@ -545,7 +576,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: return
@@ -554,8 +585,8 @@
   - Return
   score_type: continuous
   lower_is_better: false
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: calvin-avg-seq-length
@@ -575,13 +606,16 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: truthfulqa-mc2
   display_name: MC2Acc
   aliases:
   - MC2Acc
+  # The stat name lm-evaluation-harness reports it under, and the key the
+  # every_eval_ever lm_eval converter carries bounds for.
+  - mc2
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -594,8 +628,8 @@
   - Median Human Normalized Score
   score_type: continuous
   lower_is_better: false
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 - id: correlation
@@ -615,7 +649,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 - id: recall-at-5
@@ -637,7 +671,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: counting-precision
@@ -677,7 +711,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: rpe-rotation
@@ -687,7 +721,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: correspondence-recall
@@ -718,7 +752,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: vqascore
@@ -778,7 +812,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "low"}'
   review_status: draft
 - id: edit-distance
@@ -827,8 +861,8 @@
   - HPSv3 Score
   score_type: continuous
   lower_is_better: false
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: v-star-mam
@@ -848,7 +882,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: tm-score
@@ -939,7 +973,7 @@
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 - id: diversity
@@ -949,7 +983,7 @@
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 - id: mpjpe
@@ -959,7 +993,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 # --- PwC recurring image-geometry + 3D-pose metrics -------------------------
@@ -978,7 +1012,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: mpvpe
@@ -995,7 +1029,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: pa-pve
@@ -1006,7 +1040,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 - id: pck
@@ -1058,7 +1092,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: tepe
@@ -1070,7 +1104,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 - id: fl-all
@@ -1143,7 +1177,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: n-pve
@@ -1158,7 +1192,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 - id: add
@@ -1172,7 +1206,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: rotation-mae
@@ -1199,7 +1233,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 # --- end PwC recurring image-geometry + 3D-pose metrics ---------------------
@@ -1210,7 +1244,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: paired-accuracy
@@ -1274,7 +1308,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: mce
@@ -1284,7 +1318,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: image-reward
@@ -1293,8 +1327,8 @@
   - ImageReward
   score_type: continuous
   lower_is_better: false
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: perceptual-index
@@ -1304,7 +1338,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: ods
@@ -1384,7 +1418,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 - id: imgedit-score
@@ -1413,7 +1447,7 @@
   - mMOTA
   score_type: continuous
   lower_is_better: false
-  min_score: null
+  min_score: -.inf
   max_score: 1.0
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
@@ -1483,8 +1517,8 @@
   - Mean Human Normalized Score
   score_type: continuous
   lower_is_better: false
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: dominance
@@ -1523,7 +1557,7 @@
   - MOTA
   score_type: continuous
   lower_is_better: false
-  min_score: null
+  min_score: -.inf
   max_score: 1.0
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
@@ -1667,7 +1701,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium"}'
   review_status: draft
 - id: map
@@ -1750,7 +1784,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: mase
@@ -1760,7 +1794,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: geneval-score
@@ -1797,6 +1831,11 @@
   display_name: Matthews Correlation
   aliases:
   - Matthews Correlation
+  - Matthews correlation coefficient
+  - matthews-correlation-coefficient
+  - matthews_corrcoef
+  - mcc
+  - MCC
   score_type: continuous
   lower_is_better: false
   min_score: -1.0
@@ -1900,7 +1939,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: chrf-plus-plus
@@ -1950,7 +1989,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: hits-at-100
@@ -2033,15 +2072,59 @@
   max_score: 1.0
   metadata: '{"kind": "dataset_specific", "confidence": "medium"}'
   review_status: draft
+# --- family: perplexity — exponentiated negative log-likelihood per unit — [1,∞) (bits-per-byte [0,∞)), lower better (4) ---
+# The four differ only in the unit the log-likelihood is averaged over
+# (scored target, whitespace word, UTF-8 byte, and bits per byte), and are
+# different numbers for the same model on the same text, so each is its
+# own canonical. Source: lm-evaluation-harness lm_eval/api/metrics.py
+# (perplexity, weighted_perplexity, bits_per_byte aggregations).
 - id: perplexity
   display_name: Perplexity
   aliases:
   - Perplexity
+  - ppl
   score_type: continuous
   lower_is_better: true
   min_score: 1.0
-  max_score: null
-  metadata: '{"kind": "real", "confidence": "high"}'
+  max_score: .inf
+  metadata: '{"kind": "real", "confidence": "high", "family": "perplexity", "provenance": "lm-evaluation-harness", "source": "lm_eval/api/metrics.py perplexity aggregation: exp(-mean(loglikelihood)) over scored targets", "note": "the unqualified form: exp of the mean negative log-likelihood per scored target (lm-eval perplexity on LAMBADA scores the final word); generic reports also use it for per-token perplexity"}'
+  review_status: draft
+- id: word-perplexity
+  display_name: Word Perplexity
+  aliases:
+  - word_perplexity
+  - Word perplexity
+  - word-level perplexity
+  score_type: continuous
+  lower_is_better: true
+  min_score: 1.0
+  max_score: .inf
+  metadata: '{"kind": "real", "confidence": "high", "family": "perplexity", "provenance": "lm-evaluation-harness", "source": "lm_eval/api/metrics.py weighted_perplexity over word counts (wikitext)", "note": "exp of the negative log-likelihood averaged per whitespace word of the original page text; tokenizer-independent, not comparable to token perplexity"}'
+  review_status: draft
+- id: byte-perplexity
+  display_name: Byte Perplexity
+  aliases:
+  - byte_perplexity
+  - Byte perplexity
+  - byte-level perplexity
+  score_type: continuous
+  lower_is_better: true
+  min_score: 1.0
+  max_score: .inf
+  metadata: '{"kind": "real", "confidence": "high", "family": "perplexity", "provenance": "lm-evaluation-harness", "source": "lm_eval/api/metrics.py weighted_perplexity over byte counts (wikitext)", "note": "exp of the negative log-likelihood averaged per UTF-8 byte; equals 2 ** bits-per-byte"}'
+  review_status: draft
+- id: bits-per-byte
+  display_name: Bits per Byte
+  aliases:
+  - bits_per_byte
+  - Bits per byte
+  - BPB
+  - bpb
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: .inf
+  metadata: '{"kind": "real", "confidence": "high", "family": "perplexity", "provenance": "lm-evaluation-harness", "source": "lm_eval/api/metrics.py bits_per_byte: -weighted_mean(loglikelihood)/ln 2 over byte counts (wikitext)", "note": "negative log2-likelihood per UTF-8 byte; log2 of byte-perplexity"}'
   review_status: draft
 - id: ndcg-at-10
   display_name: NDCG@10
@@ -2090,7 +2173,7 @@
   score_type: continuous
   lower_is_better: false
   min_score: 1.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: geometric-auc-at-3
@@ -2160,7 +2243,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: ice-bench-overall
@@ -2210,8 +2293,8 @@
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
-  max_score: null
-  metadata: '{"kind": "real", "confidence": "low"}'
+  max_score: 10.0
+  metadata: '{"kind": "real", "confidence": "low", "note": "range stated by the metric name itself"}'
   review_status: draft
 - id: recall-at-20
   display_name: Recall@20
@@ -2386,7 +2469,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: cider
@@ -2397,7 +2480,7 @@
   lower_is_better: false
   min_score: 0.0
   max_score: null
-  metadata: '{"kind": "real", "confidence": "high"}'
+  metadata: '{"kind": "real", "confidence": "high", "note": "bounded, not open-ended: CIDEr-D averages clipped TF-IDF cosine similarities (each <= 1) so the reference pycocoevalcap implementation tops out at 10 with its x10 factor; papers report on x1, x10 and x100 conventions, so the upper bound is left unstated rather than pinned to one convention"}'
   review_status: draft
 - id: rmse
   display_name: rmse
@@ -2406,7 +2489,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 - id: fid
@@ -2416,7 +2499,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high"}'
   review_status: draft
 
@@ -2628,6 +2711,10 @@
   aliases:
   - 'Macro F1'
   - 'F1-macro'
+  # HELM's stat name for this quantity (schema_classic.yaml
+  # classification_macro_f1, display_name "Macro-F1"), which the
+  # every_eval_ever HELM converter publishes verbatim.
+  - classification_macro_f1
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
@@ -3053,7 +3140,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: b-mpjpe
@@ -3063,7 +3150,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: b-mve
@@ -3073,7 +3160,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: b-nmje
@@ -3083,7 +3170,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: b-nmve
@@ -3093,7 +3180,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: f-mpjpe
@@ -3103,7 +3190,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: fb-mpjpe
@@ -3113,7 +3200,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: fb-mve
@@ -3123,7 +3210,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: fb-nmje
@@ -3133,7 +3220,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: fb-nmve
@@ -3143,7 +3230,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: lh-mpjpe
@@ -3153,7 +3240,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: mrpe-mm
@@ -3163,7 +3250,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: pa-pve-all
@@ -3173,7 +3260,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: pa-pve-face
@@ -3183,7 +3270,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: pa-pve-hands
@@ -3193,7 +3280,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: pve-all
@@ -3203,7 +3290,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: pve-face
@@ -3213,7 +3300,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: pve-hands
@@ -3223,7 +3310,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: rh-mpjpe
@@ -3233,7 +3320,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: root-relative-mpjpe-mm
@@ -3243,7 +3330,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "pose-error", "source": "joint/vertex position error in mm; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
@@ -3255,7 +3342,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "dist-error", "source": "distance/regression error; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: generated-scene-consistency-mse
@@ -3265,7 +3352,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "dist-error", "source": "distance/regression error; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: long-context-memory-mse
@@ -3275,7 +3362,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "dist-error", "source": "distance/regression error; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: rmse-m
@@ -3285,7 +3372,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "dist-error", "source": "distance/regression error; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
@@ -3297,7 +3384,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "spec-loss", "source": "spectral / L1 loss distance; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: mel-loss
@@ -3307,7 +3394,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "spec-loss", "source": "spectral / L1 loss distance; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: mel-l1
@@ -3317,7 +3404,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "spec-loss", "source": "spectral / L1 loss distance; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: stft-distance
@@ -3327,7 +3414,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "spec-loss", "source": "spectral / L1 loss distance; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: stft-loss
@@ -3337,7 +3424,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "spec-loss", "source": "spectral / L1 loss distance; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: stft-dist
@@ -3347,7 +3434,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "spec-loss", "source": "spectral / L1 loss distance; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
@@ -3359,7 +3446,7 @@
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "psnr", "source": "PSNR in dB; [0,inf), higher better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: pie-bench-background-psnr
@@ -3369,7 +3456,7 @@
   score_type: continuous
   lower_is_better: false
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "psnr", "source": "PSNR in dB; [0,inf), higher better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
@@ -3457,7 +3544,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "mcd", "source": "mel-cepstral distortion in dB; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
@@ -3469,7 +3556,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "gen-dist", "source": "FID/KID/FVD generative distance; [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
@@ -3481,7 +3568,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "bitrate", "source": "bit-rate (bpsp/bpp); [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: bpsp
@@ -3491,7 +3578,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "bitrate", "source": "bit-rate (bpsp/bpp); [0,inf), lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
@@ -3502,8 +3589,8 @@
   - 'BD-Rate'
   score_type: continuous
   lower_is_better: true
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "bd", "source": "Bjontegaard-delta rate (signed %); unbounded, lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: bd-rate-ms-ssim-rgb
@@ -3512,8 +3599,8 @@
   - 'BD-Rate (MS-SSIM RGB)'
   score_type: continuous
   lower_is_better: true
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "bd", "source": "Bjontegaard-delta rate (signed %); unbounded, lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: bd-rate-psnr-rgb
@@ -3522,8 +3609,8 @@
   - 'BD-Rate (PSNR RGB)'
   score_type: continuous
   lower_is_better: true
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "bd", "source": "Bjontegaard-delta rate (signed %); unbounded, lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 - id: bd-rate-weighted-psnr-yuv420
@@ -3532,8 +3619,8 @@
   - 'BD-Rate (Weighted PSNR YUV420)'
   score_type: continuous
   lower_is_better: true
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "bd", "source": "Bjontegaard-delta rate (signed %); unbounded, lower better", "provenance": "paperswithcode-adapter"}'
   review_status: draft
 
@@ -3805,7 +3892,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "bespoke-paper", "source": "Kullback-Leibler divergence between the predicted and ground-truth saliency probability maps. Non-negative by Gibbs'' inequality; equals 0 iff the two distribut\u2026", "provenance": "paperswithcode-adapter", "paper": "https://arxiv.org/abs/2301.02315"}'
   review_status: draft
 - id: kris-bench-overall
@@ -3835,7 +3922,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "bespoke-paper", "source": "L2 displacement error in meters between planned and human/GT trajectory at the 1s horizon; unbounded above, 0 = perfect match. Lower is better.", "provenance": "paperswithcode-adapter", "paper": "https://ar5iv.labs.arxiv.org/abs/2207.07601"}'
   review_status: draft
 - id: l2-2s
@@ -3845,7 +3932,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "bespoke-paper", "source": "L2 displacement error in meters between planned and human/GT trajectory at the 2s horizon; unbounded above, 0 = perfect match. Lower is better.", "provenance": "paperswithcode-adapter", "paper": "https://ar5iv.labs.arxiv.org/abs/2207.07601"}'
   review_status: draft
 - id: l2-3s
@@ -3855,7 +3942,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "bespoke-paper", "source": "L2 displacement error in meters between planned and human/GT trajectory at the 3s horizon; unbounded above, 0 = perfect match. Lower is better.", "provenance": "paperswithcode-adapter", "paper": "https://ar5iv.labs.arxiv.org/abs/2207.07601"}'
   review_status: draft
 - id: laion-aesthetic-score
@@ -3885,7 +3972,7 @@
   score_type: continuous
   lower_is_better: true
   min_score: 0.0
-  max_score: null
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "medium", "family": "bespoke-paper", "source": "LPS = LPIPS perceptual distance between the restored image and the degraded input (a consistency measure). In Tables 1-2 it is reported with a down-arrow (lowe\u2026", "provenance": "paperswithcode-adapter", "paper": "https://arxiv.org/abs/2603.25502"}'
   review_status: draft
 - id: maev
@@ -3954,8 +4041,8 @@
   - 'NSS'
   score_type: continuous
   lower_is_better: false
-  min_score: null
-  max_score: null
+  min_score: -.inf
+  max_score: .inf
   metadata: '{"kind": "real", "confidence": "high", "family": "bespoke-paper", "source": "Normalized Scanpath Saliency: the mean of the predicted saliency map (normalized to zero mean, unit standard deviation) sampled at ground-truth fixation locati\u2026", "provenance": "paperswithcode-adapter", "paper": "https://arxiv.org/abs/2301.02315"}'
   review_status: draft
 - id: out-noc
@@ -4244,6 +4331,285 @@
   max_score: 1.0
   metadata: '{}'
   review_status: reviewed
+
+# --- lm-eval-harness metric vocabulary (2026-08-21): the metric labels an
+# --- lm_eval submission emits that had no canonical home.
+- id: normalized-accuracy
+  display_name: Normalized Accuracy
+  aliases: ["acc_norm", "normalized_accuracy", "Normalized accuracy", "acc-norm", "accuracy_norm", "accuracy-norm", "length-normalized accuracy", "Length-normalized accuracy"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"source": "lm-evaluation-harness api/task.py: argmax(loglikelihood / completion_len) == gold, where completion_len is each choice\u2019s character count", "note": "length/byte-normalized accuracy over multiple-choice continuations (lm-eval acc_norm); a different computation than plain accuracy, kept separate for the same reason macro-accuracy is"}'
+  review_status: reviewed
+- id: lenient-accuracy
+  display_name: Lenient Accuracy
+  aliases: ["acc_lenient"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"note": "accuracy under a relaxed answer-matching rule (lm-eval acc_lenient)"}'
+  review_status: reviewed
+- id: math-verify
+  display_name: Math-Verify
+  aliases: ["math_verify"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"note": "fraction of answers judged equivalent to the reference by the math-verify symbolic checker"}'
+  review_status: reviewed
+- id: prompt-level-strict-accuracy
+  display_name: Prompt-Level Strict Accuracy
+  aliases: ["prompt_level_strict_acc"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"note": "IFEval: share of prompts where every instruction is satisfied under strict matching"}'
+  review_status: reviewed
+- id: inst-level-strict-accuracy
+  display_name: Instruction-Level Strict Accuracy
+  aliases: ["inst_level_strict_acc"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"note": "IFEval: share of individual instructions satisfied under strict matching"}'
+  review_status: reviewed
+- id: prompt-level-loose-accuracy
+  display_name: Prompt-Level Loose Accuracy
+  aliases: ["prompt_level_loose_acc"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"note": "IFEval: share of prompts where every instruction is satisfied under loose matching"}'
+  review_status: reviewed
+- id: inst-level-loose-accuracy
+  display_name: Instruction-Level Loose Accuracy
+  aliases: ["inst_level_loose_acc"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"note": "IFEval: share of individual instructions satisfied under loose matching"}'
+  review_status: reviewed
+- id: degeneration
+  display_name: Degeneration
+  aliases: []
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"note": "share of generations that degenerate (repetition loops / empty output)"}'
+  review_status: reviewed
+- id: average-word-count
+  display_name: Average Word Count
+  aliases: ["avg_word_count"]
+  score_type: continuous
+  lower_is_better: null
+  min_score: 0.0
+  max_score: .inf
+  metadata: '{"note": "descriptive response-length statistic; direction is not meaningful, so lower_is_better stays unset"}'
+  review_status: reviewed
+- id: arena-hard-score
+  display_name: Arena-Hard Score
+  aliases: ["arena_hard_score"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 100.0
+  metadata: '{"note": "Arena-Hard judge score against the baseline model, reported on a 0-100 scale"}'
+  review_status: reviewed
+- id: length-controlled-win-rate
+  display_name: Length-Controlled Win Rate
+  aliases: ["length_controlled_winrate", "LC Win Rate"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 100.0
+  metadata: '{"note": "AlpacaEval 2.0 length-debiased win rate; a different computation than the raw win-rate canonical, kept separate. Debiasing is the logistic model of Dubois et al. 2024 (arXiv:2404.04475); the estimator is bounded in [0,100] because the GLM prediction passes through a logistic before the x100 scaling"}'
+  review_status: reviewed
+- id: pass-at-10
+  display_name: Pass@10
+  aliases: ["Pass@10", "pass_at_10"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{}'
+  review_status: reviewed
+# Response-class rates for safety suites (HarmBench / MultiJail): the source
+# labels the three classes with the bare words `safe` / `unsafe` / `invalid`.
+- id: safe-rate
+  display_name: Safe Rate
+  aliases: ["safe"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{}'
+  review_status: reviewed
+- id: unsafe-rate
+  display_name: Unsafe Rate
+  aliases: ["unsafe"]
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{}'
+  review_status: reviewed
+- id: invalid-rate
+  display_name: Invalid Rate
+  aliases: ["invalid"]
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{}'
+  review_status: reviewed
+
+
+# Metrics the harness converters in evaleval/every_eval_ever publish that had no
+# entry here. Each is a distinct quantity from anything already listed rather
+# than a spelling of it, and the `source` in `metadata` is the upstream
+# definition it was read off.
+
+- id: quasi-exact-match
+  display_name: Quasi-Exact Match
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml: \"Fraction of instances that the predicted output matches a correct reference up to light processing\" (lowercasing, punctuation, articles, whitespace)", "provenance": "eee-converters", "note": "distinct from exact-match, which compares the raw strings; HELM gives both the short_display_name \"EM\", so that string is not an alias of either"}'
+  review_status: draft
+
+- id: prefix-exact-match
+  display_name: Prefix Exact Match
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml: \"Fraction of instances that the predicted output matches the prefix of a correct reference exactly\"", "provenance": "eee-converters", "note": "systematically at least as high as exact-match on the same run, so the two must not share an id; HELM gives both prefix variants the short_display_name \"PEM\", so that string is not an alias of either"}'
+  review_status: draft
+
+- id: quasi-prefix-exact-match
+  display_name: Prefix Quasi-Exact Match
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml: prefix_exact_match applied after the quasi_exact_match normalization", "provenance": "eee-converters", "note": "the id follows the stat name HELM emits; HELM carries a TODO to rename that stat to prefix_quasi_exact_match, which would arrive here as an alias rather than a new entry"}'
+  review_status: draft
+
+- id: micro-f1
+  display_name: Micro F1
+  aliases: ["classification_micro_f1"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml: \"Population-level micro-averaged F1 score\"; computed by classification_metrics.ClassificationMetric as sklearn f1_score(average=\"micro\")", "provenance": "eee-converters", "note": "kept separate from f1 and macro-f1 for the same reason macro-f1 is separate from f1: a different averaging over classes"}'
+  review_status: draft
+
+- id: math-equivalent
+  display_name: Math Equivalent
+  aliases: ["math_equiv", "Equivalent"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_classic.yaml, display_name \"Equivalent\": \"Fraction of model outputs that are mathematically equivalent to the correct reference\"", "provenance": "eee-converters"}'
+  review_status: draft
+
+- id: math-equivalent-chain-of-thought
+  display_name: Math Equivalent (CoT)
+  aliases: ["math_equiv_chain_of_thought", "Equivalent (CoT)", "Equivalent (chain of thought)"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM: same as math_equiv under chain-of-thought prompting. display_name \"Equivalent (CoT)\" in schema_lite.yaml and \"Equivalent (chain of thought)\" in schema_classic.yaml", "provenance": "eee-converters", "note": "the alias \"Equivalent (CoT)\" moves here off cot-correct, which was carrying the display names of two different HELM metrics"}'
+  review_status: draft
+
+- id: ifeval-strict-accuracy
+  display_name: IFEval Strict Accuracy
+  aliases: ["IFEval Strict Acc"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "HELM schema_capabilities.yaml: \"Fraction of instructions in the instance that are correctly followed\"; ifeval_metrics.IFEvalMetric takes the mean of instruction.check_following over an instance", "provenance": "eee-converters"}'
+  review_status: draft
+
+- id: brier-score
+  display_name: Brier Score
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: 2.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "lm-evaluation-harness api/task.py: mean(sum((softmax(loglikelihoods) - one_hot(gold)) ** 2))", "provenance": "eee-converters", "note": "the multi-class form sums the squared error over every class, so all the mass on one wrong class costs 2.0, not the 1.0 the two-class definition suggests"}'
+  review_status: draft
+
+- id: rouge-lsum
+  display_name: ROUGE-Lsum
+  aliases: ["rougeLsum"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "google-research rouge_score \"rougeLsum\", reached through HuggingFace evaluate by lm-evaluation-harness summarization tasks", "provenance": "eee-converters", "note": "ROUGE-L computed after splitting the text into sentences, so it differs from rouge-l on the same pair"}'
+  review_status: draft
+
+- id: truthfulqa-mc1
+  display_name: MC1Acc
+  aliases: ["mc1"]
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "dataset_specific", "confidence": "high", "source": "TruthfulQA MC1: whether the single highest-scored choice is the one true answer. Reported under the stat name mc1 by lm-evaluation-harness v0.3 and by lighteval; current lm-eval names the metric acc and carries the MC1/MC2 distinction in the task name.", "provenance": "eee-converters", "note": "mirrors the existing truthfulqa-mc2 entry"}'
+  review_status: draft
+
+# The two sacrebleu metrics. Their bounds follow the entries already here for
+# their siblings — chrf-plus-plus and bleu are [0, 1], wer and cer are
+# [0.0, null] — so #57 moves the whole family or none of it, rather than making
+# these two a third convention.
+
+- id: chrf
+  display_name: chrF
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 1.0
+  metadata: '{"kind": "real", "confidence": "high", "source": "sacrebleu corpus_chrf: character n-gram F-score, beta=2, char_order=6, word_order=0. Reached through lm-evaluation-harness api/metrics.py chrf.", "provenance": "eee-converters", "note": "plain chrF, not chrf-plus-plus: sacrebleu becomes chrF++ only at word_order=2 and lm-eval calls corpus_chrf with the defaults, so the two are different numbers on the same run. lm-eval releases through v0.4.12 label this one chrF++ in the docstring while computing chrF (docstring fixed in v0.4.13).", "scale": "sacrebleu reports this x100; the [0, 1] here matches the chrf-plus-plus and bleu entries, and evaleval/eval-card-registry#57 tracks the registry-wide choice"}'
+  review_status: draft
+
+- id: ter
+  display_name: TER
+  score_type: continuous
+  lower_is_better: true
+  min_score: 0.0
+  max_score: .inf
+  metadata: '{"kind": "real", "confidence": "high", "source": "sacrebleu corpus_ter: Translation Edit Rate, the edits needed to turn the hypothesis into a reference divided by the reference length (Snover et al. 2006). Reached through lm-evaluation-harness api/metrics.py ter.", "provenance": "eee-converters", "note": "an error rate, so lower is better and there is no ceiling: a hypothesis can need more edits than the reference has words. lm-evaluation-harness releases through v0.4.12 register this metric higher_is_better=True, contradicting the metric definition; fixed in v0.4.13 (ccde35c8, 2026-08-26), see curation/UPSTREAM_DATA_ISSUES.md", "scale": "sacrebleu reports this x100; the bound here matches the wer and cer entries"}'
+  review_status: draft
+
+- id: lexam-open-question-judge-score
+  display_name: 'LEXam Open Question Judge Score'
+  aliases:
+  - 'Open Question Judge Score'
+  scoped_aliases:
+    lexam:
+      - 'Judge Scores on Open Questions'
+  score_type: continuous
+  lower_is_better: false
+  min_score: 0.0
+  max_score: 100.0
+  metadata: '{"kind": "real", "confidence": "high", "family": "bespoke-paper", "source": "0-100 scale. Each judge assigns a per-question correctness score on 0.0-1.0 in 0.1 increments against a reference answer; the ensemble takes the pointwise MINIMUM across three judges (GPT-4o, Qwen3-32B, DeepSeek-V3), and the reported figure is the mean over questions times 100. Same 0-100 convention as the sibling *-judge-score entries.", "provenance": "lexam-adapter", "paper": "https://arxiv.org/abs/2505.12864", "judge_prompt": "https://github.com/LEXam-Benchmark/LEXam/blob/main/customized_judge_async.py"}'
+  review_status: draft
 
 # --- Polistemics (arXiv:2607.25953) ---
 # display_name is benchmark-scoped ("Polistemics Rubric Score", NOT bare

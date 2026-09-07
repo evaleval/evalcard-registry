@@ -620,3 +620,85 @@ class TestResolveStructuredMetricId:
         r = self._resolver()
         assert r.resolve_structured_metric_id(None) is None
         assert r.resolve_structured_metric_id("  ") is None
+
+
+class TestResolveStructuredBenchmark:
+    """Segment-wise, registry-driven resolution for dotted evaluation_names."""
+
+    def _resolver(self):
+        return Resolver(
+            _store_with_aliases(
+                ("bbq", "benchmark", "bbq", None, "confirmed"),
+                ("agieval_lsat_lr", "benchmark", "agieval", None, "confirmed"),
+                ("MMLU", "benchmark", "mmlu", None, "confirmed"),
+                ("MMLU-Pro", "benchmark", "mmlu-pro", None, "confirmed"),
+                ("mmlu_pro", "benchmark", "mmlu-pro", None, "confirmed"),
+                ("Mmlu pro math", "benchmark", "mmlu-pro", None, "confirmed"),
+                ("math", "benchmark", "math", None, "confirmed"),
+                ("bfcl", "benchmark", "bfcl", None, "confirmed"),
+                ("live_accuracy", "metric", "accuracy", None, "confirmed"),
+                ("mmlu_college_physics", "benchmark", "mmlu", None, "confirmed"),
+            )
+        )
+
+    def test_doubled_segments_collapse(self):
+        match = self._resolver().resolve_structured_benchmark("bbq.bbq.overall")
+        assert (match.canonical_id, match.benchmark_raw, match.subset) == ("bbq", "bbq", None)
+
+    def test_doubled_segments_collapse_with_underscores(self):
+        match = self._resolver().resolve_structured_benchmark(
+            "agieval_lsat_lr.agieval_lsat_lr.overall"
+        )
+        assert match.canonical_id == "agieval"
+        assert match.benchmark_raw == "agieval lsat lr"
+
+    def test_most_specific_segment_wins(self):
+        # The family slot must not outrank the benchmark it qualifies.
+        match = self._resolver().resolve_structured_benchmark("MMLU.MMLU-Pro.overall")
+        assert match.canonical_id == "mmlu-pro"
+        assert match.benchmark_raw == "MMLU-Pro"
+
+    def test_subset_stays_with_its_parent(self):
+        # `math` is a benchmark of its own, but here it is MMLU-Pro's subject.
+        match = self._resolver().resolve_structured_benchmark(
+            "vals_ai.mmlu_pro.math", source_config="vals-ai"
+        )
+        assert match.canonical_id == "mmlu-pro"
+        assert match.subset == "math"
+
+    def test_leading_source_namespace_is_not_the_benchmark(self):
+        match = self._resolver().resolve_structured_benchmark(
+            "vals_ai.mmlu_pro.biology", source_config="vals-ai"
+        )
+        assert match.canonical_id == "mmlu-pro"
+        assert match.benchmark_raw == "mmlu pro biology"
+        assert match.subset == "biology"
+
+    def test_trailing_metric_segment_is_dropped(self):
+        match = self._resolver().resolve_structured_benchmark("bfcl.live.live_accuracy")
+        assert match.canonical_id == "bfcl"
+        assert match.subset == "live"
+
+    def test_run_config_tokens_resolve_through_the_strip(self):
+        match = self._resolver().resolve_structured_benchmark(
+            "mmlu_flan_cot_zeroshot_college_physics."
+            "mmlu_flan_cot_zeroshot_college_physics.overall"
+        )
+        assert match.canonical_id == "mmlu"
+
+    def test_bare_name_never_routes_through(self):
+        assert self._resolver().resolve_structured_benchmark("gsm8k") is None
+
+    def test_no_segment_resolves_falls_back(self):
+        assert self._resolver().resolve_structured_benchmark("nope.nothing.overall") is None
+
+    def test_whitespace_text_never_routes_through(self):
+        assert (
+            self._resolver().resolve_structured_benchmark("NaturalQuestions (open-book).")
+            is None
+        )
+
+    def test_none_and_blank_inputs(self):
+        r = self._resolver()
+        assert r.resolve_structured_benchmark(None) is None
+        assert r.resolve_structured_benchmark("  ") is None

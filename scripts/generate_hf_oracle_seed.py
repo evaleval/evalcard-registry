@@ -602,7 +602,7 @@ def main() -> None:
             "org_id": org_id,
             "resolution_source": "hf",
             "review_status": "reviewed",
-            # tgt IS the real HF repo id -> mark it authoritative (§5): never to
+            # tgt IS the real HF repo id -> mark it authoritative: never to
             # be rewritten/suppressed in favor of a colliding dev-org slug.
             "metadata": authoritative_metadata(tgt),
         }

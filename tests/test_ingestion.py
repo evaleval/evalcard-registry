@@ -89,7 +89,7 @@ def _seeded_store() -> RegistryStore:
         {"id": "score", "display_name": "Score", "_aliases": ["score"]},
         {"id": "bleu-4", "display_name": "BLEU-4"},
         {"id": "cot-correct", "display_name": "COT Correct",
-         "_aliases": ["COT correct", "Equivalent (CoT)"]},
+         "_aliases": ["COT correct", "chain_of_thought_correctness"]},
         {"id": "win-rate", "display_name": "Win Rate", "_aliases": ["Win rate (%)"]},
         {"id": "mean-score", "display_name": "Mean Score", "_aliases": ["Mean score"]},
     ]

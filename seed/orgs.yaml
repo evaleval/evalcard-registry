@@ -294,6 +294,7 @@
 - id: uk-aisi
   display_name: UK AI Security Institute
   website: https://www.aisi.gov.uk
+  logo_url: /org-logos/uk-aisi.svg
   aliases: ["UK AI Security Initiative", "UK AISI", "AI Security Institute", "UK AI Safety Institute"]
   tags: '["government", "evaluator"]'
   kind: lab
@@ -421,6 +422,7 @@
   display_name: ARC Prize
   aliases:
   - arc-prize
+  - ARC Prize Foundation
   website: https://arcprize.org
   tags: '["evaluator"]'
   kind: community
@@ -831,3 +833,25 @@
   kind: lab
   metadata: '{}'
   review_status: reviewed
+# Curated override of the generated `swiss-ai-initiative` row: the HF-true
+# namespace is `swiss-ai`, so models published as `swiss-ai/...` fold to this
+# developer. Id kept as-is pending the rung-promotion decision.
+- id: swiss-ai-initiative
+  display_name: swiss-ai-initiative
+  website: https://www.swiss-ai.org
+  hf_org: swiss-ai
+  aliases: ["swiss-ai", "Swiss AI Initiative"]
+  tags: '[]'
+  kind: community
+  metadata: '{}'
+  review_status: reviewed
+
+# --- aiXamine — QCRI LLM trust-evaluation platform (evaluator) ---
+- id: aixamine
+  display_name: aiXamine
+  website: https://aixamine.qcri.org
+  aliases: ["QCRI aiXamine"]
+  tags: '["academic", "evaluator"]'
+  kind: lab
+  metadata: '{"paper": "https://arxiv.org/abs/2608.20554"}'
+  review_status: draft
