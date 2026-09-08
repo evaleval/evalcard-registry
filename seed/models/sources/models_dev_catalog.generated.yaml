@@ -3731,6 +3731,13 @@
   weak:
     release_date: '2024-01-01'
     open_weights: true
+- id: deepseek/deepseek-v4-1-flash
+  aliases:
+  - deepseek-v4-1-flash
+  metadata: '{"alias_platforms": {"deepseek-v4-1-flash": "nano-gpt"}}'
+  weak:
+    release_date: '2026-09-08'
+    open_weights: false
 - id: deepseek/deepseek-v4-flash
   aliases:
   - TEE/deepseek-v4-flash
@@ -9709,9 +9716,10 @@
     - text
 - id: Qwen/Qwen3-8B
   aliases:
+  - TEE/qwen3-8b
   - alibaba/qwen3-8b
   - qwen3-8b
-  metadata: '{"alias_platforms": {"alibaba/qwen3-8b": "nano-gpt", "qwen3-8b": "nano-gpt"}}'
+  metadata: '{"alias_platforms": {"TEE/qwen3-8b": "nano-gpt", "alibaba/qwen3-8b": "nano-gpt", "qwen3-8b": "nano-gpt"}}'
   weak:
     release_date: 2025-04
     open_weights: true
@@ -11159,14 +11167,6 @@
   weak:
     release_date: '2026-05-01'
     open_weights: false
-- id: yi-large
-  weak:
-    release_date: '2024-01-01'
-    open_weights: false
-- id: yi-medium-200k
-  weak:
-    release_date: '2024-01-01'
-    open_weights: false
 - id: zai-org/GLM-4.5
   aliases:
   - glm-4-5
@@ -11780,6 +11780,14 @@
   weak:
     release_date: '2026-06-16'
     open_weights: true
+- id: yi-large
+  weak:
+    release_date: '2024-01-01'
+    open_weights: false
+- id: yi-medium-200k
+  weak:
+    release_date: '2024-01-01'
+    open_weights: false
 - id: PrimeIntellect/intellect-3
   aliases:
   - intellect-3

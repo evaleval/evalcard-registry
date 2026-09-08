@@ -885,6 +885,7 @@
 - id: Qwen/Qwen3-8B
   aliases:
   - Qwen3 8B
+  - TEE/qwen3-8b
   - alibaba/qwen3-8b
   - qwen3-8b
   weak:
@@ -9288,6 +9289,23 @@
   - deepseek/deepseek-v3-2-exp
   metadata: '{"alias_platforms": {"deepseek-v3-2-exp": "qiniu-ai", "deepseek/deepseek-v3-2-exp": "qiniu-ai"}, "openrouter_adopted": true, "providers": ["alibaba-cn", "kilo", "meganova", "nano-gpt", "novita-ai",
     "openrouter", "qiniu-ai", "siliconflow", "zenmux"], "underlying_key": "deepseek-v3-2-exp"}'
+  review_status: draft
+  resolution_source: models_dev
+- id: deepseek/deepseek-v4-1-flash
+  display_name: DeepSeek V4.1 Flash
+  org_id: deepseek
+  family: deepseek-v4-1-flash
+  architecture: null
+  params_billions: null
+  parents: []
+  open_weights: false
+  release_date: '2026-09-08'
+  input_modalities: null
+  output_modalities: null
+  tags: []
+  aliases:
+  - deepseek-v4-1-flash
+  metadata: '{"alias_platforms": {"deepseek-v4-1-flash": "nano-gpt"}, "providers": ["nano-gpt"], "underlying_key": "deepseek-v4-1-flash"}'
   review_status: draft
   resolution_source: models_dev
 - id: deepseek/deepseek-v4-flash
@@ -28739,7 +28757,7 @@
   tags:
   - org-unknown
   aliases: []
-  metadata: '{"providers": ["nano-gpt"], "underlying_key": "yi-large"}'
+  metadata: '{"providers": ["nano-gpt"], "underlying_key": "yi-large", "upstream_status": "removed"}'
   review_status: draft
   resolution_source: models_dev
 - id: yi-lightning
@@ -28773,7 +28791,7 @@
   tags:
   - org-unknown
   aliases: []
-  metadata: '{"providers": ["nano-gpt"], "underlying_key": "yi-medium-200k"}'
+  metadata: '{"providers": ["nano-gpt"], "underlying_key": "yi-medium-200k", "upstream_status": "removed"}'
   review_status: draft
   resolution_source: models_dev
 - id: z-ai/glm-4-32b
@@ -30082,7 +30100,7 @@
   aliases:
   - glm-latest
   - ~z-ai/glm-latest
-  metadata: '{"alias_platforms": {"glm-latest": "nano-gpt", "~z-ai/glm-latest": "openrouter"}, "providers": ["kilo", "nano-gpt", "openrouter"], "underlying_key": "glm"}'
+  metadata: '{"alias_platforms": {"glm-latest": "nano-gpt", "~z-ai/glm-latest": "openrouter"}, "providers": ["kilo", "nano-gpt", "openrouter", "privatemode-ai"], "underlying_key": "glm"}'
   review_status: draft
   resolution_source: models_dev
 - id: zai/glm-z1-32b-0414
